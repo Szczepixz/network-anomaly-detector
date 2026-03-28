@@ -19,7 +19,7 @@ def main() -> None:
     data_path = ROOT / "data" / "demo_flows.csv"
     flows = load_flows(data_path)
     stats = calculate_flow_stats(flows)
-    suspicious_flows = detect_suspicious_flows(flows)
+    suspicious_flows = detect_suspicious_flows(flows, stats)
 
     print(f"Loaded {len(flows)} flows.")
     print(f"Average duration: {stats.avg_duration_ms:.2f} ms")
@@ -36,6 +36,7 @@ def main() -> None:
         print(
             "Suspicious record: "
             f"{suspicious_flow.flow.src_ip} -> {suspicious_flow.flow.dst_ip} "
+            f"score={suspicious_flow.score:.1f} "
             f"({', '.join(suspicious_flow.reasons)})"
         )
 
