@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -15,18 +16,36 @@ from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.stats import calculate_flow_stats
 
 
-def main() -> None:
-    data_path = ROOT / "data" / "demo_flows.csv"
-    flows = load_flows(data_path)
-    stats = calculate_flow_stats(flows)
-    suspicious_flows = detect_suspicious_flows(flows, stats)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Analyze network flow data.")
+    parser.add_argument(
+        "--input",
+        default=str(ROOT / "data" / "demo_flows.csv"),
+        help="Path to the CSV file with flow data.",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=4.0,
+        help="Minimum anomaly score required to mark a flow as suspicious.",
+    )
+    return parser.parse_args()
 
+
+def main() -> None:
+    args = parse_args()
+    flows = load_flows(args.input)
+    stats = calculate_flow_stats(flows)
+    suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
+
+    print(f"Input file: {args.input}")
     print(f"Loaded {len(flows)} flows.")
     print(f"Average duration: {stats.avg_duration_ms:.2f} ms")
     print(f"Average bytes sent: {stats.avg_bytes_sent:.2f}")
     print(f"Average bytes received: {stats.avg_bytes_received:.2f}")
     print(f"Average packets: {stats.avg_packets:.2f}")
     print(f"Protocols: {', '.join(stats.protocols)}")
+    print(f"Threshold: {args.threshold:.1f}")
     print(f"Suspicious flows: {len(suspicious_flows)}")
 
     if flows:
