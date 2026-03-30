@@ -13,6 +13,12 @@ class ScoredFlow:
     reasons: list[str]
 
 
+def calculate_z_score(value: float, mean: float, std_dev: float) -> float:
+    if std_dev == 0:
+        return 0.0
+    return (value - mean) / std_dev
+
+
 def score_flows(flows: list[FlowRecord], stats: FlowStats) -> list[ScoredFlow]:
     scored_flows: list[ScoredFlow] = []
 
@@ -20,20 +26,29 @@ def score_flows(flows: list[FlowRecord], stats: FlowStats) -> list[ScoredFlow]:
         reasons: list[str] = []
         score = 0.0
 
-        if stats.avg_duration_ms > 0 and flow.duration_ms > stats.avg_duration_ms * 1.5:
-            score += 1.0
-            reasons.append("duration above average")
+        duration_z_score = calculate_z_score(
+            flow.duration_ms, stats.avg_duration_ms, stats.std_duration_ms
+        )
+        if duration_z_score >= 1.5:
+            score += duration_z_score
+            reasons.append(f"high duration (z={duration_z_score:.2f})")
 
-        if stats.avg_bytes_received > 0 and flow.bytes_received > stats.avg_bytes_received * 1.5:
-            score += 1.0
-            reasons.append("bytes received above average")
+        bytes_received_z_score = calculate_z_score(
+            flow.bytes_received, stats.avg_bytes_received, stats.std_bytes_received
+        )
+        if bytes_received_z_score >= 1.5:
+            score += bytes_received_z_score
+            reasons.append(f"high bytes received (z={bytes_received_z_score:.2f})")
 
-        if stats.avg_packets > 0 and flow.packets > stats.avg_packets * 1.5:
-            score += 1.0
-            reasons.append("packet count above average")
+        packets_z_score = calculate_z_score(
+            flow.packets, stats.avg_packets, stats.std_packets
+        )
+        if packets_z_score >= 1.5:
+            score += packets_z_score
+            reasons.append(f"high packet count (z={packets_z_score:.2f})")
 
         if flow.failed_logins > 0:
-            score += 1.0
+            score += 1.5
             reasons.append("failed logins detected")
 
         scored_flows.append(ScoredFlow(flow=flow, score=score, reasons=reasons))
@@ -42,7 +57,7 @@ def score_flows(flows: list[FlowRecord], stats: FlowStats) -> list[ScoredFlow]:
 
 
 def detect_suspicious_flows(
-    flows: list[FlowRecord], stats: FlowStats, threshold: float = 2.0
+    flows: list[FlowRecord], stats: FlowStats, threshold: float = 4.0
 ) -> list[ScoredFlow]:
     scored_flows = score_flows(flows, stats)
     return [scored_flow for scored_flow in scored_flows if scored_flow.score >= threshold]

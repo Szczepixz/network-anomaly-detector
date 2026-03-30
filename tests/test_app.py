@@ -30,9 +30,13 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
 
         self.assertEqual(stats.flow_count, 5)
         self.assertAlmostEqual(stats.avg_duration_ms, 197.0)
+        self.assertAlmostEqual(stats.std_duration_ms, 132.87588193498473)
         self.assertAlmostEqual(stats.avg_bytes_sent, 1900.0)
+        self.assertAlmostEqual(stats.std_bytes_sent, 1063.954886261631)
         self.assertAlmostEqual(stats.avg_bytes_received, 6700.0)
+        self.assertAlmostEqual(stats.std_bytes_received, 3798.947222586805)
         self.assertAlmostEqual(stats.avg_packets, 18.4)
+        self.assertAlmostEqual(stats.std_packets, 10.150862032359615)
         self.assertEqual(stats.protocols, ["TCP", "UDP"])
 
     def test_detect_suspicious_flows_finds_outlier_record(self) -> None:
@@ -42,7 +46,7 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
 
         self.assertEqual(len(suspicious_flows), 1)
         self.assertEqual(suspicious_flows[0].flow.src_ip, "10.0.0.13")
-        self.assertAlmostEqual(suspicious_flows[0].score, 4.0)
+        self.assertAlmostEqual(suspicious_flows[0].score, 6.796873150257308)
 
 
 if __name__ == "__main__":
