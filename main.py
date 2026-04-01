@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from network_anomaly_detector.datasets import load_flows
+from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.stats import calculate_flow_stats
 
@@ -32,9 +32,14 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
+def main() -> int:
     args = parse_args()
-    flows = load_flows(args.input)
+    try:
+        flows = load_flows(args.input)
+    except FlowDataError as error:
+        print(f"Error: {error}")
+        return 1
+
     stats = calculate_flow_stats(flows)
     suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
 
@@ -59,6 +64,8 @@ def main() -> None:
             f"({', '.join(suspicious_flow.reasons)})"
         )
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

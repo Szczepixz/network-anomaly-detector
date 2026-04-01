@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from network_anomaly_detector.datasets import load_flows
+from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.stats import calculate_flow_stats
 
@@ -47,6 +47,10 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
         self.assertEqual(len(suspicious_flows), 1)
         self.assertEqual(suspicious_flows[0].flow.src_ip, "10.0.0.13")
         self.assertAlmostEqual(suspicious_flows[0].score, 6.796873150257308)
+
+    def test_load_flows_raises_error_for_missing_file(self) -> None:
+        with self.assertRaises(FlowDataError):
+            load_flows(ROOT / "data" / "missing.csv")
 
 
 if __name__ == "__main__":
