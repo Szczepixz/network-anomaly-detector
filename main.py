@@ -13,6 +13,7 @@ if str(SRC) not in sys.path:
 
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
+from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
 
 
@@ -28,6 +29,10 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=4.0,
         help="Minimum anomaly score required to mark a flow as suspicious.",
+    )
+    parser.add_argument(
+        "--output",
+        help="Optional path to save suspicious flows as CSV.",
     )
     return parser.parse_args()
 
@@ -63,6 +68,10 @@ def main() -> int:
             f"score={suspicious_flow.score:.1f} "
             f"({', '.join(suspicious_flow.reasons)})"
         )
+
+    if args.output:
+        save_suspicious_flows_csv(args.output, suspicious_flows)
+        print(f"Saved suspicious flows to: {args.output}")
 
     return 0
 

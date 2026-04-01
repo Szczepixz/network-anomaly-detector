@@ -13,6 +13,7 @@ if str(SRC) not in sys.path:
 
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
+from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
 
 
@@ -51,6 +52,23 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
     def test_load_flows_raises_error_for_missing_file(self) -> None:
         with self.assertRaises(FlowDataError):
             load_flows(ROOT / "data" / "missing.csv")
+
+    def test_save_suspicious_flows_csv_creates_output_file(self) -> None:
+        flows = load_flows(ROOT / "data" / "demo_flows.csv")
+        stats = calculate_flow_stats(flows)
+        suspicious_flows = detect_suspicious_flows(flows, stats)
+        output_path = ROOT / "tests" / "tmp_suspicious_flows.csv"
+
+        try:
+            save_suspicious_flows_csv(output_path, suspicious_flows)
+
+            self.assertTrue(output_path.exists())
+            content = output_path.read_text(encoding="utf-8")
+            self.assertIn("timestamp,src_ip,dst_ip,protocol,score,reasons", content)
+            self.assertIn("10.0.0.13", content)
+        finally:
+            if output_path.exists():
+                output_path.unlink()
 
 
 if __name__ == "__main__":
