@@ -9,7 +9,8 @@ The current version can:
 - load flow records from a CSV file,
 - calculate basic traffic statistics,
 - assign a simple anomaly score to each flow,
-- show suspicious records based on a chosen threshold.
+- show suspicious records based on a chosen threshold,
+- save suspicious records to a CSV file.
 
 ## How It Works
 
@@ -54,11 +55,22 @@ Run with a custom threshold:
 python main.py --input data/demo_flows.csv --threshold 6.5
 ```
 
+Save suspicious flows to a CSV file:
+
+```bash
+python main.py --input data/demo_flows.csv --output output/suspicious_flows.csv
+```
+
 ## Running Tests
 
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Real Data
+
+The project does not read live traffic yet.
+Later, I want to add support for CSV files exported from Wireshark or tshark.
 
 ## Current Status
 
@@ -68,6 +80,7 @@ The project already includes:
 - basic statistics,
 - simple statistical anomaly scoring,
 - CLI arguments,
+- CSV export,
 - basic tests.
 
 More improvements can be added later, for example better scoring, more features, and cleaner output.
