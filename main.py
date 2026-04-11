@@ -48,29 +48,34 @@ def main() -> int:
     stats = calculate_flow_stats(flows)
     suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
 
+    print("Summary")
     print(f"Input file: {args.input}")
-    print(f"Loaded {len(flows)} flows.")
+    print(f"Loaded flows: {len(flows)}")
+    print(f"Threshold: {args.threshold:.1f}")
+    print(f"Suspicious flows: {len(suspicious_flows)}")
+
+    print()
+    print("Traffic stats")
     print(f"Average duration: {stats.avg_duration_ms:.2f} ms")
     print(f"Average bytes sent: {stats.avg_bytes_sent:.2f}")
     print(f"Average bytes received: {stats.avg_bytes_received:.2f}")
     print(f"Average packets: {stats.avg_packets:.2f}")
     print(f"Protocols: {', '.join(stats.protocols)}")
-    print(f"Threshold: {args.threshold:.1f}")
-    print(f"Suspicious flows: {len(suspicious_flows)}")
 
-    if flows:
-        print(f"First flow: {flows[0]}")
-
+    print()
+    print("Suspicious flows")
+    if not suspicious_flows:
+        print("No suspicious flows detected.")
     for suspicious_flow in suspicious_flows:
         print(
-            "Suspicious record: "
-            f"{suspicious_flow.flow.src_ip} -> {suspicious_flow.flow.dst_ip} "
-            f"score={suspicious_flow.score:.1f} "
-            f"({', '.join(suspicious_flow.reasons)})"
+            f"{suspicious_flow.flow.src_ip} -> {suspicious_flow.flow.dst_ip} | "
+            f"score={suspicious_flow.score:.1f} | "
+            f"{', '.join(suspicious_flow.reasons)}"
         )
 
     if args.output:
         save_suspicious_flows_csv(args.output, suspicious_flows)
+        print()
         print(f"Saved suspicious flows to: {args.output}")
 
     return 0
