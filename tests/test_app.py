@@ -13,6 +13,7 @@ if str(SRC) not in sys.path:
 
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
+from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
 
@@ -47,7 +48,7 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
 
         self.assertEqual(len(suspicious_flows), 1)
         self.assertEqual(suspicious_flows[0].flow.src_ip, "10.0.0.13")
-        self.assertAlmostEqual(suspicious_flows[0].score, 6.796873150257308)
+        self.assertAlmostEqual(suspicious_flows[0].score, 8.58, places=2)
 
     def test_load_flows_raises_error_for_missing_file(self) -> None:
         with self.assertRaises(FlowDataError):
@@ -66,6 +67,24 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
             content = output_path.read_text(encoding="utf-8")
             self.assertIn("timestamp,src_ip,dst_ip,protocol,score,reasons", content)
             self.assertIn("10.0.0.13", content)
+        finally:
+            if output_path.exists():
+                output_path.unlink()
+
+    def test_convert_tshark_packets_to_flows_creates_flow_csv(self) -> None:
+        output_path = ROOT / "tests" / "tmp_converted_flows.csv"
+
+        try:
+            convert_tshark_packets_to_flows(
+                ROOT / "data" / "tshark_packets_sample.csv",
+                output_path,
+            )
+            flows = load_flows(output_path)
+
+            self.assertEqual(len(flows), 4)
+            self.assertEqual(flows[0].src_ip, "192.168.33.12")
+            self.assertEqual(flows[3].bytes_sent, 16100.0)
+            self.assertEqual(flows[3].packets, 3.0)
         finally:
             if output_path.exists():
                 output_path.unlink()

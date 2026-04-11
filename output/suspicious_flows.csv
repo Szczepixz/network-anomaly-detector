@@ -1,2 +1,0 @@
-timestamp,src_ip,dst_ip,protocol,score,reasons
-2026-03-26T10:03:00,10.0.0.13,172.16.0.23,TCP,6.80,high duration (z=1.75); high bytes received (z=1.71); high packet count (z=1.83); failed logins detected

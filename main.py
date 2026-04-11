@@ -14,11 +14,17 @@ if str(SRC) not in sys.path:
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
+from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.stats import calculate_flow_stats
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Analyze network flow data.")
+    parser.add_argument(
+        "--convert-tshark",
+        action="store_true",
+        help="Convert a simple tshark-like packet CSV into the flow CSV format.",
+    )
     parser.add_argument(
         "--input",
         default=str(ROOT / "data" / "demo_flows.csv"),
@@ -39,6 +45,21 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if args.convert_tshark:
+        if not args.output:
+            print("Error: --output is required when using --convert-tshark")
+            return 1
+
+        try:
+            convert_tshark_packets_to_flows(args.input, args.output)
+        except FlowDataError as error:
+            print(f"Error: {error}")
+            return 1
+
+        print(f"Converted tshark-like CSV to flow CSV: {args.output}")
+        return 0
+
     try:
         flows = load_flows(args.input)
     except FlowDataError as error:
