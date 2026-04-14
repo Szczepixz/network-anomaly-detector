@@ -24,6 +24,8 @@ def load_flows(csv_path: str | Path) -> list[FlowRecord]:
                     timestamp=row["timestamp"],
                     src_ip=row["src_ip"],
                     dst_ip=row["dst_ip"],
+                    src_port=int(row.get("src_port") or 0),
+                    dst_port=int(row.get("dst_port") or 0),
                     protocol=row["protocol"],
                     duration_ms=float(row["duration_ms"]),
                     bytes_sent=float(row["bytes_sent"]),

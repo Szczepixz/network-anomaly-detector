@@ -8,6 +8,8 @@ class FlowRecord:
     timestamp: str
     src_ip: str
     dst_ip: str
+    src_port: int
+    dst_port: int
     protocol: str
     duration_ms: float
     bytes_sent: float

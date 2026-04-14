@@ -65,7 +65,10 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
 
             self.assertTrue(output_path.exists())
             content = output_path.read_text(encoding="utf-8")
-            self.assertIn("timestamp,src_ip,dst_ip,protocol,score,reasons", content)
+            self.assertIn(
+                "timestamp,src_ip,dst_ip,src_port,dst_port,protocol,score,reasons",
+                content,
+            )
             self.assertIn("10.0.0.13", content)
         finally:
             if output_path.exists():
@@ -83,6 +86,8 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
 
             self.assertEqual(len(flows), 4)
             self.assertEqual(flows[0].src_ip, "192.168.33.12")
+            self.assertEqual(flows[0].src_port, 5353)
+            self.assertEqual(flows[0].dst_port, 5353)
             self.assertEqual(flows[3].bytes_sent, 16100.0)
             self.assertEqual(flows[3].packets, 3.0)
         finally:

@@ -70,7 +70,13 @@ python -m unittest discover -s tests -v
 ## Real Data
 
 The project does not read live traffic yet.
-Later, I want to add support for CSV files exported from Wireshark or tshark.
+It can convert a simple CSV export from tshark into the flow format used by the detector.
+
+Example tshark export:
+
+```bash
+tshark -i 7 -c 30 -T fields -E header=y -E separator=, -E quote=d -e frame.time_epoch -e ip.src -e ip.dst -e _ws.col.Protocol -e frame.len -e tcp.srcport -e tcp.dstport -e udp.srcport -e udp.dstport > data/real_tshark_packets.csv
+```
 
 ## Current Status
 

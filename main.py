@@ -89,7 +89,8 @@ def main() -> int:
         print("No suspicious flows detected.")
     for suspicious_flow in suspicious_flows:
         print(
-            f"{suspicious_flow.flow.src_ip} -> {suspicious_flow.flow.dst_ip} | "
+            f"{suspicious_flow.flow.src_ip}:{suspicious_flow.flow.src_port} -> "
+            f"{suspicious_flow.flow.dst_ip}:{suspicious_flow.flow.dst_port} | "
             f"score={suspicious_flow.score:.1f} | "
             f"{', '.join(suspicious_flow.reasons)}"
         )

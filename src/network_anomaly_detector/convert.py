@@ -13,6 +13,8 @@ class PacketRow:
     timestamp: datetime
     src_ip: str
     dst_ip: str
+    src_port: int
+    dst_port: int
     protocol: str
     length: float
 
@@ -37,6 +39,8 @@ def _load_packet_rows(input_path: str | Path) -> list[PacketRow]:
                     timestamp=_parse_tshark_timestamp(row["frame.time_epoch"]),
                     src_ip=row["ip.src"],
                     dst_ip=row["ip.dst"],
+                    src_port=_read_port(row, "tcp.srcport", "udp.srcport"),
+                    dst_port=_read_port(row, "tcp.dstport", "udp.dstport"),
                     protocol=row["_ws.col.protocol"],
                     length=float(row["frame.len"]),
                 )
@@ -55,14 +59,20 @@ def _load_packet_rows(input_path: str | Path) -> list[PacketRow]:
 
 
 def _build_flow_rows(packets: list[PacketRow]) -> list[dict[str, str]]:
-    grouped_packets: dict[tuple[str, str, str], list[PacketRow]] = {}
+    grouped_packets: dict[tuple[str, str, int, int, str], list[PacketRow]] = {}
 
     for packet in packets:
-        key = (packet.src_ip, packet.dst_ip, packet.protocol)
+        key = (
+            packet.src_ip,
+            packet.dst_ip,
+            packet.src_port,
+            packet.dst_port,
+            packet.protocol,
+        )
         grouped_packets.setdefault(key, []).append(packet)
 
     flow_rows: list[dict[str, str]] = []
-    for (src_ip, dst_ip, protocol), group in grouped_packets.items():
+    for (src_ip, dst_ip, src_port, dst_port, protocol), group in grouped_packets.items():
         timestamps = [packet.timestamp for packet in group]
         duration_ms = (max(timestamps) - min(timestamps)).total_seconds() * 1000
         total_bytes = sum(packet.length for packet in group)
@@ -72,6 +82,8 @@ def _build_flow_rows(packets: list[PacketRow]) -> list[dict[str, str]]:
                 "timestamp": min(timestamps).isoformat(),
                 "src_ip": src_ip,
                 "dst_ip": dst_ip,
+                "src_port": str(src_port),
+                "dst_port": str(dst_port),
                 "protocol": protocol,
                 "duration_ms": f"{duration_ms:.2f}",
                 "bytes_sent": f"{total_bytes:.2f}",
@@ -95,6 +107,8 @@ def _save_flow_rows(output_path: str | Path, rows: list[dict[str, str]]) -> None
                 "timestamp",
                 "src_ip",
                 "dst_ip",
+                "src_port",
+                "dst_port",
                 "protocol",
                 "duration_ms",
                 "bytes_sent",
@@ -109,3 +123,8 @@ def _save_flow_rows(output_path: str | Path, rows: list[dict[str, str]]) -> None
 
 def _parse_tshark_timestamp(value: str) -> datetime:
     return datetime.fromtimestamp(float(value), tz=timezone.utc)
+
+
+def _read_port(row: dict[str, str], tcp_field: str, udp_field: str) -> int:
+    value = row.get(tcp_field) or row.get(udp_field) or "0"
+    return int(value) if value else 0
