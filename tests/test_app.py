@@ -94,6 +94,34 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
             if output_path.exists():
                 output_path.unlink()
 
+    def test_convert_tshark_packets_handles_missing_ports(self) -> None:
+        input_path = ROOT / "tests" / "tmp_packets_missing_ports.csv"
+        output_path = ROOT / "tests" / "tmp_flows_missing_ports.csv"
+
+        try:
+            input_path.write_text(
+                "\n".join(
+                    [
+                        "frame.time_epoch,ip.src,ip.dst,_ws.col.protocol,frame.len,tcp.srcport,tcp.dstport,udp.srcport,udp.dstport",
+                        "1775942574.783329000,192.168.1.10,192.168.1.1,,98,,,,",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            convert_tshark_packets_to_flows(input_path, output_path)
+            flows = load_flows(output_path)
+
+            self.assertEqual(len(flows), 1)
+            self.assertEqual(flows[0].src_port, 0)
+            self.assertEqual(flows[0].dst_port, 0)
+            self.assertEqual(flows[0].protocol, "UNKNOWN")
+        finally:
+            if input_path.exists():
+                input_path.unlink()
+            if output_path.exists():
+                output_path.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()
