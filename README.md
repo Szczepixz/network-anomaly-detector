@@ -16,6 +16,7 @@ The current version can:
 
 Each flow has a few basic features, for example:
 - protocol,
+- source and destination ports,
 - duration,
 - bytes sent and received,
 - packet count,
@@ -26,6 +27,7 @@ Then it gives points to flows that stand out from the rest.
 
 Right now the score is based on:
 - duration,
+- bytes sent,
 - bytes received,
 - packet count,
 - failed logins.
@@ -69,7 +71,7 @@ python -m unittest discover -s tests -v
 
 ## Real Data
 
-The project does not read live traffic yet.
+The project does not capture live traffic by itself yet.
 It can convert a simple CSV export from tshark into the flow format used by the detector.
 
 Example tshark export:
@@ -86,6 +88,7 @@ The project already includes:
 - basic statistics,
 - simple statistical anomaly scoring,
 - CLI arguments,
+- tshark CSV conversion,
 - CSV export,
 - basic tests.
 
