@@ -13,53 +13,61 @@ if str(SRC) not in sys.path:
 
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
-from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
+from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Analyze network flow data.")
-    parser.add_argument(
-        "--convert-tshark",
-        action="store_true",
-        help="Convert a simple tshark-like packet CSV into the flow CSV format.",
-    )
-    parser.add_argument(
+    parser = argparse.ArgumentParser(description="Network anomaly detector.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    analyze_parser = subparsers.add_parser("analyze", help="Analyze flow CSV data.")
+    analyze_parser.add_argument(
         "--input",
         default=str(ROOT / "data" / "demo_flows.csv"),
         help="Path to the CSV file with flow data.",
     )
-    parser.add_argument(
+    analyze_parser.add_argument(
         "--threshold",
         type=float,
         default=4.0,
         help="Minimum anomaly score required to mark a flow as suspicious.",
     )
-    parser.add_argument(
+    analyze_parser.add_argument(
         "--output",
         help="Optional path to save suspicious flows as CSV.",
+    )
+
+    convert_parser = subparsers.add_parser(
+        "convert-tshark",
+        help="Convert a tshark packet CSV into the flow CSV format.",
+    )
+    convert_parser.add_argument(
+        "--input",
+        required=True,
+        help="Path to the tshark packet CSV file.",
+    )
+    convert_parser.add_argument(
+        "--output",
+        required=True,
+        help="Path where the converted flow CSV should be saved.",
     )
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_args()
+def convert_tshark_command(args: argparse.Namespace) -> int:
+    try:
+        convert_tshark_packets_to_flows(args.input, args.output)
+    except FlowDataError as error:
+        print(f"Error: {error}")
+        return 1
 
-    if args.convert_tshark:
-        if not args.output:
-            print("Error: --output is required when using --convert-tshark")
-            return 1
+    print(f"Converted tshark CSV to flow CSV: {args.output}")
+    return 0
 
-        try:
-            convert_tshark_packets_to_flows(args.input, args.output)
-        except FlowDataError as error:
-            print(f"Error: {error}")
-            return 1
 
-        print(f"Converted tshark-like CSV to flow CSV: {args.output}")
-        return 0
-
+def analyze_command(args: argparse.Namespace) -> int:
     try:
         flows = load_flows(args.input)
     except FlowDataError as error:
@@ -101,6 +109,15 @@ def main() -> int:
         print(f"Saved suspicious flows to: {args.output}")
 
     return 0
+
+
+def main() -> int:
+    args = parse_args()
+
+    if args.command == "convert-tshark":
+        return convert_tshark_command(args)
+
+    return analyze_command(args)
 
 
 if __name__ == "__main__":

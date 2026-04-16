@@ -48,19 +48,19 @@ network-anomaly-detector/
 Run the demo dataset:
 
 ```bash
-python main.py --input data/demo_flows.csv
+python main.py analyze --input data/demo_flows.csv
 ```
 
 Run with a custom threshold:
 
 ```bash
-python main.py --input data/demo_flows.csv --threshold 6.5
+python main.py analyze --input data/demo_flows.csv --threshold 6.5
 ```
 
 Save suspicious flows to a CSV file:
 
 ```bash
-python main.py --input data/demo_flows.csv --output output/suspicious_flows.csv
+python main.py analyze --input data/demo_flows.csv --output output/suspicious_flows.csv
 ```
 
 ## Running Tests
@@ -74,10 +74,24 @@ python -m unittest discover -s tests -v
 The project does not capture live traffic by itself yet.
 It can convert a simple CSV export from tshark into the flow format used by the detector.
 
-Example tshark export:
+1. Capture a small CSV sample with tshark:
 
 ```bash
 tshark -i 7 -c 30 -T fields -E header=y -E separator=, -E quote=d -e frame.time_epoch -e ip.src -e ip.dst -e _ws.col.Protocol -e frame.len -e tcp.srcport -e tcp.dstport -e udp.srcport -e udp.dstport > data/real_tshark_packets.csv
+```
+
+The interface number can be different on another machine.
+
+2. Convert the tshark CSV to flow CSV:
+
+```bash
+python main.py convert-tshark --input data/real_tshark_packets.csv --output output/real_flows.csv
+```
+
+3. Analyze the converted file:
+
+```bash
+python main.py analyze --input output/real_flows.csv --threshold 2
 ```
 
 ## Current Status
