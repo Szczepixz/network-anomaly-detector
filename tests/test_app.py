@@ -11,6 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from network_anomaly_detector.capture import TSHARK_FIELDS, build_tshark_command
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
@@ -19,6 +20,20 @@ from network_anomaly_detector.stats import calculate_flow_stats
 
 
 class NetworkAnomalyDetectorTests(unittest.TestCase):
+    def test_build_tshark_command_contains_expected_fields(self) -> None:
+        command = build_tshark_command(
+            tshark_path="tshark",
+            interface="7",
+            packet_count=50,
+        )
+
+        self.assertIn("-i", command)
+        self.assertIn("7", command)
+        self.assertIn("-c", command)
+        self.assertIn("50", command)
+        for field in TSHARK_FIELDS:
+            self.assertIn(field, command)
+
     def test_load_flows_reads_all_records(self) -> None:
         flows = load_flows(ROOT / "data" / "demo_flows.csv")
 

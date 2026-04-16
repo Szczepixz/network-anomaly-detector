@@ -71,16 +71,15 @@ python -m unittest discover -s tests -v
 
 ## Real Data
 
-The project does not capture live traffic by itself yet.
-It can convert a simple CSV export from tshark into the flow format used by the detector.
+The project can capture a small packet sample with tshark and convert it into the flow format used by the detector.
 
-1. Capture a small CSV sample with tshark:
+1. Capture a small CSV sample:
 
 ```bash
-tshark -i 7 -c 30 -T fields -E header=y -E separator=, -E quote=d -e frame.time_epoch -e ip.src -e ip.dst -e _ws.col.Protocol -e frame.len -e tcp.srcport -e tcp.dstport -e udp.srcport -e udp.dstport > data/real_tshark_packets.csv
+python main.py capture-tshark --interface 7 --count 50 --output data/real_tshark_packets.csv
 ```
 
-The interface number can be different on another machine.
+The interface number can be different on another machine. If `tshark` is not in PATH, add `--tshark-path`.
 
 2. Convert the tshark CSV to flow CSV:
 
@@ -102,6 +101,7 @@ The project already includes:
 - basic statistics,
 - simple statistical anomaly scoring,
 - CLI arguments,
+- tshark capture,
 - tshark CSV conversion,
 - CSV export,
 - basic tests.
