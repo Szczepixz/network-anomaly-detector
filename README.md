@@ -79,6 +79,8 @@ Quick scan:
 python main.py scan-tshark --interface 7 --count 50 --threshold 2
 ```
 
+By default, scan files are saved with a timestamp, so older scans are not overwritten.
+
 The interface number can be different on another machine. If `tshark` is not in PATH, add `--tshark-path`.
 
 You can also run the steps separately.

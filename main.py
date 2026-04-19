@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -104,12 +105,10 @@ def parse_args() -> argparse.Namespace:
     )
     scan_parser.add_argument(
         "--packet-output",
-        default=str(ROOT / "data" / "real_tshark_packets.csv"),
         help="Path where the captured packet CSV should be saved.",
     )
     scan_parser.add_argument(
         "--flow-output",
-        default=str(ROOT / "output" / "real_flows.csv"),
         help="Path where the converted flow CSV should be saved.",
     )
     scan_parser.add_argument(
@@ -177,15 +176,23 @@ def analyze_command(args: argparse.Namespace) -> int:
 
 
 def scan_tshark_command(args: argparse.Namespace) -> int:
+    scan_paths = build_scan_paths(
+        packet_output=args.packet_output,
+        flow_output=args.flow_output,
+    )
+
     try:
         capture_tshark_csv(
-            output_path=args.packet_output,
+            output_path=scan_paths["packet_output"],
             interface=args.interface,
             packet_count=args.count,
             tshark_path=args.tshark_path,
         )
-        convert_tshark_packets_to_flows(args.packet_output, args.flow_output)
-        flows = load_flows(args.flow_output)
+        convert_tshark_packets_to_flows(
+            scan_paths["packet_output"],
+            scan_paths["flow_output"],
+        )
+        flows = load_flows(scan_paths["flow_output"])
     except FlowDataError as error:
         print(f"Error: {error}")
         return 1
@@ -194,13 +201,13 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
     suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
 
     print("Scan files")
-    print(f"Packet CSV: {args.packet_output}")
-    print(f"Flow CSV: {args.flow_output}")
+    print(f"Packet CSV: {scan_paths['packet_output']}")
+    print(f"Flow CSV: {scan_paths['flow_output']}")
     if args.output:
         print(f"Suspicious CSV: {args.output}")
     print()
     print_analysis(
-        input_path=args.flow_output,
+        input_path=scan_paths["flow_output"],
         threshold=args.threshold,
         flows=flows,
         suspicious_flows=suspicious_flows,
@@ -213,6 +220,19 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
         print("Saved suspicious flows.")
 
     return 0
+
+
+def build_scan_paths(
+    packet_output: str | None,
+    flow_output: str | None,
+) -> dict[str, str]:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return {
+        "packet_output": packet_output
+        or str(ROOT / "data" / f"real_tshark_packets_{timestamp}.csv"),
+        "flow_output": flow_output
+        or str(ROOT / "output" / f"real_flows_{timestamp}.csv"),
+    }
 
 
 def print_analysis(

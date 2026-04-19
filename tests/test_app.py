@@ -17,9 +17,27 @@ from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
+from main import build_scan_paths
 
 
 class NetworkAnomalyDetectorTests(unittest.TestCase):
+    def test_build_scan_paths_uses_custom_paths(self) -> None:
+        paths = build_scan_paths(
+            packet_output="data/custom_packets.csv",
+            flow_output="output/custom_flows.csv",
+        )
+
+        self.assertEqual(paths["packet_output"], "data/custom_packets.csv")
+        self.assertEqual(paths["flow_output"], "output/custom_flows.csv")
+
+    def test_build_scan_paths_generates_default_paths(self) -> None:
+        paths = build_scan_paths(packet_output=None, flow_output=None)
+
+        self.assertIn("real_tshark_packets_", paths["packet_output"])
+        self.assertIn("real_flows_", paths["flow_output"])
+        self.assertTrue(paths["packet_output"].endswith(".csv"))
+        self.assertTrue(paths["flow_output"].endswith(".csv"))
+
     def test_build_tshark_command_contains_expected_fields(self) -> None:
         command = build_tshark_command(
             tshark_path="tshark",
