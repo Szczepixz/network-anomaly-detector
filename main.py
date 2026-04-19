@@ -193,8 +193,11 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
     stats = calculate_flow_stats(flows)
     suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
 
-    print(f"Captured tshark CSV: {args.packet_output}")
-    print(f"Converted flow CSV: {args.flow_output}")
+    print("Scan files")
+    print(f"Packet CSV: {args.packet_output}")
+    print(f"Flow CSV: {args.flow_output}")
+    if args.output:
+        print(f"Suspicious CSV: {args.output}")
     print()
     print_analysis(
         input_path=args.flow_output,
@@ -207,7 +210,7 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
     if args.output:
         save_suspicious_flows_csv(args.output, suspicious_flows)
         print()
-        print(f"Saved suspicious flows to: {args.output}")
+        print("Saved suspicious flows.")
 
     return 0
 
