@@ -80,6 +80,47 @@ def parse_args() -> argparse.Namespace:
         default="tshark",
         help="Path to tshark executable.",
     )
+
+    scan_parser = subparsers.add_parser(
+        "scan-tshark",
+        help="Capture a packet sample with tshark, convert it, and analyze it.",
+    )
+    scan_parser.add_argument(
+        "--interface",
+        required=True,
+        help="tshark interface number or name.",
+    )
+    scan_parser.add_argument(
+        "--count",
+        type=int,
+        default=50,
+        help="Number of packets to capture.",
+    )
+    scan_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=2.0,
+        help="Minimum anomaly score required to mark a flow as suspicious.",
+    )
+    scan_parser.add_argument(
+        "--packet-output",
+        default=str(ROOT / "data" / "real_tshark_packets.csv"),
+        help="Path where the captured packet CSV should be saved.",
+    )
+    scan_parser.add_argument(
+        "--flow-output",
+        default=str(ROOT / "output" / "real_flows.csv"),
+        help="Path where the converted flow CSV should be saved.",
+    )
+    scan_parser.add_argument(
+        "--output",
+        help="Optional path to save suspicious flows as CSV.",
+    )
+    scan_parser.add_argument(
+        "--tshark-path",
+        default="tshark",
+        help="Path to tshark executable.",
+    )
     return parser.parse_args()
 
 
@@ -119,11 +160,69 @@ def analyze_command(args: argparse.Namespace) -> int:
 
     stats = calculate_flow_stats(flows)
     suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
+    print_analysis(
+        input_path=args.input,
+        threshold=args.threshold,
+        flows=flows,
+        suspicious_flows=suspicious_flows,
+        stats=stats,
+    )
 
+    if args.output:
+        save_suspicious_flows_csv(args.output, suspicious_flows)
+        print()
+        print(f"Saved suspicious flows to: {args.output}")
+
+    return 0
+
+
+def scan_tshark_command(args: argparse.Namespace) -> int:
+    try:
+        capture_tshark_csv(
+            output_path=args.packet_output,
+            interface=args.interface,
+            packet_count=args.count,
+            tshark_path=args.tshark_path,
+        )
+        convert_tshark_packets_to_flows(args.packet_output, args.flow_output)
+        flows = load_flows(args.flow_output)
+    except FlowDataError as error:
+        print(f"Error: {error}")
+        return 1
+
+    stats = calculate_flow_stats(flows)
+    suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
+
+    print(f"Captured tshark CSV: {args.packet_output}")
+    print(f"Converted flow CSV: {args.flow_output}")
+    print()
+    print_analysis(
+        input_path=args.flow_output,
+        threshold=args.threshold,
+        flows=flows,
+        suspicious_flows=suspicious_flows,
+        stats=stats,
+    )
+
+    if args.output:
+        save_suspicious_flows_csv(args.output, suspicious_flows)
+        print()
+        print(f"Saved suspicious flows to: {args.output}")
+
+    return 0
+
+
+def print_analysis(
+    input_path: str,
+    threshold: float,
+    flows: list,
+    suspicious_flows: list,
+    stats,
+) -> None:
     print("Summary")
-    print(f"Input file: {args.input}")
+    print(f"Input file: {input_path}")
     print(f"Loaded flows: {len(flows)}")
-    print(f"Threshold: {args.threshold:.1f}")
+    print(f"Threshold: {threshold:.1f}")
     print(f"Suspicious flows: {len(suspicious_flows)}")
 
     print()
@@ -146,13 +245,6 @@ def analyze_command(args: argparse.Namespace) -> int:
             f"{', '.join(suspicious_flow.reasons)}"
         )
 
-    if args.output:
-        save_suspicious_flows_csv(args.output, suspicious_flows)
-        print()
-        print(f"Saved suspicious flows to: {args.output}")
-
-    return 0
-
 
 def main() -> int:
     args = parse_args()
@@ -161,6 +253,8 @@ def main() -> int:
         return convert_tshark_command(args)
     if args.command == "capture-tshark":
         return capture_tshark_command(args)
+    if args.command == "scan-tshark":
+        return scan_tshark_command(args)
 
     return analyze_command(args)
 

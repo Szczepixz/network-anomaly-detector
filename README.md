@@ -73,13 +73,21 @@ python -m unittest discover -s tests -v
 
 The project can capture a small packet sample with tshark and convert it into the flow format used by the detector.
 
+Quick scan:
+
+```bash
+python main.py scan-tshark --interface 7 --count 50 --threshold 2
+```
+
+The interface number can be different on another machine. If `tshark` is not in PATH, add `--tshark-path`.
+
+You can also run the steps separately.
+
 1. Capture a small CSV sample:
 
 ```bash
 python main.py capture-tshark --interface 7 --count 50 --output data/real_tshark_packets.csv
 ```
-
-The interface number can be different on another machine. If `tshark` is not in PATH, add `--tshark-path`.
 
 2. Convert the tshark CSV to flow CSV:
 
@@ -103,6 +111,7 @@ The project already includes:
 - CLI arguments,
 - tshark capture,
 - tshark CSV conversion,
+- one-command tshark scan,
 - CSV export,
 - basic tests.
 
