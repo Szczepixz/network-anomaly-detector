@@ -76,10 +76,11 @@ The project can capture a small packet sample with tshark and convert it into th
 Quick scan:
 
 ```bash
-python main.py scan-tshark --interface 7 --count 50 --threshold 2
+python main.py scan-tshark --interface 7 --count 50 --threshold 2 --cleanup
 ```
 
 By default, scan files are saved with a timestamp, so older scans are not overwritten.
+Use `--cleanup` if you do not want to keep the packet and flow CSV files after the scan.
 
 The interface number can be different on another machine. If `tshark` is not in PATH, add `--tshark-path`.
 

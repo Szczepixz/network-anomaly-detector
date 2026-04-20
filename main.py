@@ -120,6 +120,11 @@ def parse_args() -> argparse.Namespace:
         default="tshark",
         help="Path to tshark executable.",
     )
+    scan_parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Remove packet and flow CSV files after the scan.",
+    )
     return parser.parse_args()
 
 
@@ -219,6 +224,11 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
         print()
         print("Saved suspicious flows.")
 
+    if args.cleanup:
+        cleanup_scan_files(scan_paths)
+        print()
+        print("Cleaned up packet and flow CSV files.")
+
     return 0
 
 
@@ -233,6 +243,13 @@ def build_scan_paths(
         "flow_output": flow_output
         or str(ROOT / "output" / f"real_flows_{timestamp}.csv"),
     }
+
+
+def cleanup_scan_files(scan_paths: dict[str, str]) -> None:
+    for key in ("packet_output", "flow_output"):
+        path = Path(scan_paths[key])
+        if path.exists():
+            path.unlink()
 
 
 def print_analysis(
