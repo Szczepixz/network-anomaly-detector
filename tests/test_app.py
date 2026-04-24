@@ -95,8 +95,8 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
         self.assertAlmostEqual(stats.std_bytes_sent, 1063.954886261631)
         self.assertAlmostEqual(stats.avg_bytes_received, 6700.0)
         self.assertAlmostEqual(stats.std_bytes_received, 3798.947222586805)
-        self.assertAlmostEqual(stats.avg_packets, 18.4)
-        self.assertAlmostEqual(stats.std_packets, 10.150862032359615)
+        self.assertAlmostEqual(stats.avg_packets_total, 18.4)
+        self.assertAlmostEqual(stats.std_packets_total, 10.150862032359615)
         self.assertEqual(stats.protocols, ["TCP", "UDP"])
 
     def test_detect_suspicious_flows_finds_outlier_record(self) -> None:
@@ -105,7 +105,7 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
         suspicious_flows = detect_suspicious_flows(flows, stats)
 
         self.assertEqual(len(suspicious_flows), 1)
-        self.assertEqual(suspicious_flows[0].flow.src_ip, "10.0.0.13")
+        self.assertEqual(suspicious_flows[0].flow.local_ip, "10.0.0.13")
         self.assertAlmostEqual(suspicious_flows[0].score, 8.58, places=2)
 
     def test_load_flows_raises_error_for_missing_file(self) -> None:
@@ -124,7 +124,7 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
             self.assertTrue(output_path.exists())
             content = output_path.read_text(encoding="utf-8")
             self.assertIn(
-                "timestamp,src_ip,dst_ip,src_port,dst_port,protocol,score,reasons",
+                "timestamp,local_ip,remote_ip,local_port,remote_port,protocol,score,reasons",
                 content,
             )
             self.assertIn("10.0.0.13", content)
@@ -139,15 +139,20 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
             convert_tshark_packets_to_flows(
                 ROOT / "data" / "tshark_packets_sample.csv",
                 output_path,
+                local_ip="192.168.33.16",
             )
             flows = load_flows(output_path)
 
-            self.assertEqual(len(flows), 4)
-            self.assertEqual(flows[0].src_ip, "192.168.33.12")
-            self.assertEqual(flows[0].src_port, 5353)
-            self.assertEqual(flows[0].dst_port, 5353)
-            self.assertEqual(flows[3].bytes_sent, 16100.0)
-            self.assertEqual(flows[3].packets, 3.0)
+            self.assertEqual(len(flows), 3)
+            self.assertEqual(flows[0].local_ip, "192.168.33.16")
+            self.assertEqual(flows[0].local_port, 5353)
+            self.assertEqual(flows[0].remote_port, 5353)
+            self.assertEqual(flows[0].bytes_sent, 62.0)
+            self.assertEqual(flows[0].bytes_received, 80.0)
+            self.assertEqual(flows[2].bytes_sent, 10000.0)
+            self.assertEqual(flows[2].bytes_received, 6100.0)
+            self.assertEqual(flows[2].packets_sent, 2.0)
+            self.assertEqual(flows[2].packets_received, 1.0)
         finally:
             if output_path.exists():
                 output_path.unlink()
@@ -167,12 +172,16 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            convert_tshark_packets_to_flows(input_path, output_path)
+            convert_tshark_packets_to_flows(
+                input_path,
+                output_path,
+                local_ip="192.168.1.10",
+            )
             flows = load_flows(output_path)
 
             self.assertEqual(len(flows), 1)
-            self.assertEqual(flows[0].src_port, 0)
-            self.assertEqual(flows[0].dst_port, 0)
+            self.assertEqual(flows[0].local_port, 0)
+            self.assertEqual(flows[0].remote_port, 0)
             self.assertEqual(flows[0].protocol, "UNKNOWN")
         finally:
             if input_path.exists():

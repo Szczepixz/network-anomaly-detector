@@ -19,9 +19,13 @@ class PacketRow:
     length: float
 
 
-def convert_tshark_packets_to_flows(input_path: str | Path, output_path: str | Path) -> None:
+def convert_tshark_packets_to_flows(
+    input_path: str | Path,
+    output_path: str | Path,
+    local_ip: str,
+) -> None:
     packets = _load_packet_rows(input_path)
-    flow_rows = _build_flow_rows(packets)
+    flow_rows = _build_flow_rows(packets, local_ip=local_ip)
     _save_flow_rows(output_path, flow_rows)
 
 
@@ -58,39 +62,61 @@ def _load_packet_rows(input_path: str | Path) -> list[PacketRow]:
     return packets
 
 
-def _build_flow_rows(packets: list[PacketRow]) -> list[dict[str, str]]:
-    grouped_packets: dict[tuple[str, str, int, int, str], list[PacketRow]] = {}
+def _build_flow_rows(packets: list[PacketRow], local_ip: str) -> list[dict[str, str]]:
+    grouped_packets: dict[tuple[str, str, int, int, str], dict[str, object]] = {}
 
     for packet in packets:
-        key = (
-            packet.src_ip,
-            packet.dst_ip,
-            packet.src_port,
-            packet.dst_port,
-            packet.protocol,
+        direction = _classify_packet_direction(packet, local_ip=local_ip)
+        if direction is None:
+            continue
+
+        remote_ip = packet.dst_ip if direction == "outgoing" else packet.src_ip
+        local_port = packet.src_port if direction == "outgoing" else packet.dst_port
+        remote_port = packet.dst_port if direction == "outgoing" else packet.src_port
+        key = (local_ip, remote_ip, local_port, remote_port, packet.protocol)
+        entry = grouped_packets.setdefault(
+            key,
+            {
+                "timestamps": [],
+                "bytes_sent": 0.0,
+                "bytes_received": 0.0,
+                "packets_sent": 0,
+                "packets_received": 0,
+            },
         )
-        grouped_packets.setdefault(key, []).append(packet)
+        entry["timestamps"].append(packet.timestamp)
+        if direction == "outgoing":
+            entry["bytes_sent"] += packet.length
+            entry["packets_sent"] += 1
+        else:
+            entry["bytes_received"] += packet.length
+            entry["packets_received"] += 1
 
     flow_rows: list[dict[str, str]] = []
-    for (src_ip, dst_ip, src_port, dst_port, protocol), group in grouped_packets.items():
-        timestamps = [packet.timestamp for packet in group]
+    for (local_ip, remote_ip, local_port, remote_port, protocol), group in grouped_packets.items():
+        timestamps = group["timestamps"]
         duration_ms = (max(timestamps) - min(timestamps)).total_seconds() * 1000
-        total_bytes = sum(packet.length for packet in group)
 
         flow_rows.append(
             {
                 "timestamp": min(timestamps).isoformat(),
-                "src_ip": src_ip,
-                "dst_ip": dst_ip,
-                "src_port": str(src_port),
-                "dst_port": str(dst_port),
+                "local_ip": local_ip,
+                "remote_ip": remote_ip,
+                "local_port": str(local_port),
+                "remote_port": str(remote_port),
                 "protocol": protocol,
                 "duration_ms": f"{duration_ms:.2f}",
-                "bytes_sent": f"{total_bytes:.2f}",
-                "bytes_received": "0.00",
-                "packets": str(len(group)),
+                "bytes_sent": f"{group['bytes_sent']:.2f}",
+                "bytes_received": f"{group['bytes_received']:.2f}",
+                "packets_sent": str(group["packets_sent"]),
+                "packets_received": str(group["packets_received"]),
                 "failed_logins": "0",
             }
+        )
+
+    if not flow_rows:
+        raise FlowDataError(
+            "No packets matched the selected local IP. Try a different --local-ip value."
         )
 
     return flow_rows
@@ -105,15 +131,16 @@ def _save_flow_rows(output_path: str | Path, rows: list[dict[str, str]]) -> None
             handle,
             fieldnames=[
                 "timestamp",
-                "src_ip",
-                "dst_ip",
-                "src_port",
-                "dst_port",
+                "local_ip",
+                "remote_ip",
+                "local_port",
+                "remote_port",
                 "protocol",
                 "duration_ms",
                 "bytes_sent",
                 "bytes_received",
-                "packets",
+                "packets_sent",
+                "packets_received",
                 "failed_logins",
             ],
         )
@@ -129,3 +156,11 @@ def _read_port(row: dict[str, str], tcp_field: str, udp_field: str) -> int:
     value = row.get(tcp_field) or row.get(udp_field) or "0"
     value = value.split(",")[0].strip()
     return int(value) if value else 0
+
+
+def _classify_packet_direction(packet: PacketRow, local_ip: str) -> str | None:
+    if packet.src_ip == local_ip:
+        return "outgoing"
+    if packet.dst_ip == local_ip:
+        return "incoming"
+    return None

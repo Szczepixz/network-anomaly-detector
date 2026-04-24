@@ -51,7 +51,7 @@ def score_flows(flows: list[FlowRecord], stats: FlowStats) -> list[ScoredFlow]:
             reasons.append(f"high bytes received (z={bytes_received_z_score:.2f})")
 
         packets_z_score = calculate_z_score(
-            flow.packets, stats.avg_packets, stats.std_packets
+            flow.total_packets, stats.avg_packets_total, stats.std_packets_total
         )
         if packets_z_score >= Z_SCORE_LIMIT:
             score += packets_z_score

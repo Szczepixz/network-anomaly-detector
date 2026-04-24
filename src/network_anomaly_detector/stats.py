@@ -15,8 +15,8 @@ class FlowStats:
     std_bytes_sent: float
     avg_bytes_received: float
     std_bytes_received: float
-    avg_packets: float
-    std_packets: float
+    avg_packets_total: float
+    std_packets_total: float
     protocols: list[str]
 
 
@@ -30,8 +30,8 @@ def calculate_flow_stats(flows: list[FlowRecord]) -> FlowStats:
             std_bytes_sent=0.0,
             avg_bytes_received=0.0,
             std_bytes_received=0.0,
-            avg_packets=0.0,
-            std_packets=0.0,
+            avg_packets_total=0.0,
+            std_packets_total=0.0,
             protocols=[],
         )
 
@@ -39,7 +39,7 @@ def calculate_flow_stats(flows: list[FlowRecord]) -> FlowStats:
     duration_values = [flow.duration_ms for flow in flows]
     bytes_sent_values = [flow.bytes_sent for flow in flows]
     bytes_received_values = [flow.bytes_received for flow in flows]
-    packet_values = [flow.packets for flow in flows]
+    packet_values = [flow.total_packets for flow in flows]
 
     return FlowStats(
         flow_count=flow_count,
@@ -49,7 +49,7 @@ def calculate_flow_stats(flows: list[FlowRecord]) -> FlowStats:
         std_bytes_sent=pstdev(bytes_sent_values),
         avg_bytes_received=sum(bytes_received_values) / flow_count,
         std_bytes_received=pstdev(bytes_received_values),
-        avg_packets=sum(packet_values) / flow_count,
-        std_packets=pstdev(packet_values),
+        avg_packets_total=sum(packet_values) / flow_count,
+        std_packets_total=pstdev(packet_values),
         protocols=sorted({flow.protocol for flow in flows}),
     )

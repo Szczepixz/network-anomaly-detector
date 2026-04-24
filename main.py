@@ -55,6 +55,11 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Path where the converted flow CSV should be saved.",
     )
+    convert_parser.add_argument(
+        "--local-ip",
+        required=True,
+        help="Local IP address used to build bidirectional flows.",
+    )
 
     capture_parser = subparsers.add_parser(
         "capture-tshark",
@@ -100,6 +105,11 @@ def parse_args() -> argparse.Namespace:
         "--interface",
         required=True,
         help="tshark interface number or name.",
+    )
+    scan_parser.add_argument(
+        "--local-ip",
+        required=True,
+        help="Local IP address used to build bidirectional flows.",
     )
     scan_parser.add_argument(
         "--count",
@@ -168,7 +178,7 @@ def list_interfaces_command(args: argparse.Namespace) -> int:
 
 def convert_tshark_command(args: argparse.Namespace) -> int:
     try:
-        convert_tshark_packets_to_flows(args.input, args.output)
+        convert_tshark_packets_to_flows(args.input, args.output, local_ip=args.local_ip)
     except FlowDataError as error:
         print(f"Error: {error}")
         return 1
@@ -218,6 +228,7 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
         convert_tshark_packets_to_flows(
             scan_paths["packet_output"],
             scan_paths["flow_output"],
+            local_ip=args.local_ip,
         )
         flows = load_flows(scan_paths["flow_output"])
     except FlowDataError as error:
@@ -292,7 +303,7 @@ def print_analysis(
     print(f"Average duration: {stats.avg_duration_ms:.2f} ms")
     print(f"Average bytes sent: {stats.avg_bytes_sent:.2f}")
     print(f"Average bytes received: {stats.avg_bytes_received:.2f}")
-    print(f"Average packets: {stats.avg_packets:.2f}")
+    print(f"Average packets: {stats.avg_packets_total:.2f}")
     print(f"Protocols: {', '.join(stats.protocols)}")
 
     print()
@@ -301,8 +312,8 @@ def print_analysis(
         print("No suspicious flows detected.")
     for suspicious_flow in suspicious_flows:
         print(
-            f"{suspicious_flow.flow.src_ip}:{suspicious_flow.flow.src_port} -> "
-            f"{suspicious_flow.flow.dst_ip}:{suspicious_flow.flow.dst_port} | "
+            f"{suspicious_flow.flow.local_ip}:{suspicious_flow.flow.local_port} <-> "
+            f"{suspicious_flow.flow.remote_ip}:{suspicious_flow.flow.remote_port} | "
             f"score={suspicious_flow.score:.1f} | "
             f"{', '.join(suspicious_flow.reasons)}"
         )

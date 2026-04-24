@@ -22,15 +22,16 @@ def load_flows(csv_path: str | Path) -> list[FlowRecord]:
             flows = [
                 FlowRecord(
                     timestamp=row["timestamp"],
-                    src_ip=row["src_ip"],
-                    dst_ip=row["dst_ip"],
-                    src_port=int(row.get("src_port") or 0),
-                    dst_port=int(row.get("dst_port") or 0),
+                    local_ip=row.get("local_ip") or row["src_ip"],
+                    remote_ip=row.get("remote_ip") or row["dst_ip"],
+                    local_port=int(row.get("local_port") or row.get("src_port") or 0),
+                    remote_port=int(row.get("remote_port") or row.get("dst_port") or 0),
                     protocol=row["protocol"],
                     duration_ms=float(row["duration_ms"]),
                     bytes_sent=float(row["bytes_sent"]),
                     bytes_received=float(row["bytes_received"]),
-                    packets=float(row["packets"]),
+                    packets_sent=float(row.get("packets_sent") or row.get("packets") or 0),
+                    packets_received=float(row.get("packets_received") or 0),
                     failed_logins=int(row["failed_logins"]),
                 )
                 for row in reader

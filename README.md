@@ -16,10 +16,10 @@ The current version can:
 
 Each flow has a few basic features, for example:
 - protocol,
-- source and destination ports,
+- local and remote ports,
 - duration,
 - bytes sent and received,
-- packet count,
+- packets sent and received,
 - failed logins.
 
 The program calculates average values and standard deviation for the dataset.
@@ -82,7 +82,7 @@ python main.py list-interfaces
 Quick scan:
 
 ```bash
-python main.py scan-tshark --interface 7 --count 50 --threshold 2 --cleanup
+python main.py scan-tshark --interface 7 --local-ip 192.168.33.16 --count 50 --threshold 2 --cleanup
 ```
 
 By default, scan files are saved with a timestamp, so older scans are not overwritten.
@@ -101,7 +101,7 @@ python main.py capture-tshark --interface 7 --count 50 --output data/real_tshark
 2. Convert the tshark CSV to flow CSV:
 
 ```bash
-python main.py convert-tshark --input data/real_tshark_packets.csv --output output/real_flows.csv
+python main.py convert-tshark --input data/real_tshark_packets.csv --output output/real_flows.csv --local-ip 192.168.33.16
 ```
 
 3. Analyze the converted file:
@@ -120,6 +120,7 @@ The project already includes:
 - CLI arguments,
 - tshark capture,
 - tshark CSV conversion,
+- local-ip based bidirectional flows,
 - one-command tshark scan,
 - CSV export,
 - basic tests.
