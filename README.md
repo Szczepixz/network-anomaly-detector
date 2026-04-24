@@ -73,6 +73,12 @@ python -m unittest discover -s tests -v
 
 The project can capture a small packet sample with tshark and convert it into the flow format used by the detector.
 
+List available interfaces:
+
+```bash
+python main.py list-interfaces
+```
+
 Quick scan:
 
 ```bash

@@ -46,6 +46,25 @@ def build_tshark_command(
     return command
 
 
+def build_tshark_list_interfaces_command(tshark_path: str) -> list[str]:
+    return [tshark_path, "-D"]
+
+
+def list_tshark_interfaces(tshark_path: str = "tshark") -> str:
+    command = build_tshark_list_interfaces_command(tshark_path)
+
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+    except FileNotFoundError as error:
+        raise FlowDataError(f"tshark executable was not found: {tshark_path}") from error
+    except subprocess.CalledProcessError as error:
+        raise FlowDataError(
+            f"tshark interface listing failed with exit code {error.returncode}"
+        ) from error
+
+    return result.stdout.strip()
+
+
 def capture_tshark_csv(
     output_path: str | Path,
     interface: str,

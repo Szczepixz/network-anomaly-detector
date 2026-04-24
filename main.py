@@ -12,7 +12,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from network_anomaly_detector.capture import capture_tshark_csv
+from network_anomaly_detector.capture import capture_tshark_csv, list_tshark_interfaces
 from network_anomaly_detector.datasets import FlowDataError, load_flows
 from network_anomaly_detector.detector import detect_suspicious_flows
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
@@ -82,6 +82,16 @@ def parse_args() -> argparse.Namespace:
         help="Path to tshark executable.",
     )
 
+    interfaces_parser = subparsers.add_parser(
+        "list-interfaces",
+        help="List available tshark capture interfaces.",
+    )
+    interfaces_parser.add_argument(
+        "--tshark-path",
+        default="tshark",
+        help="Path to tshark executable.",
+    )
+
     scan_parser = subparsers.add_parser(
         "scan-tshark",
         help="Capture a packet sample with tshark, convert it, and analyze it.",
@@ -141,6 +151,18 @@ def capture_tshark_command(args: argparse.Namespace) -> int:
         return 1
 
     print(f"Captured tshark CSV: {args.output}")
+    return 0
+
+
+def list_interfaces_command(args: argparse.Namespace) -> int:
+    try:
+        output = list_tshark_interfaces(tshark_path=args.tshark_path)
+    except FlowDataError as error:
+        print(f"Error: {error}")
+        return 1
+
+    print("Available interfaces")
+    print(output)
     return 0
 
 
@@ -293,6 +315,8 @@ def main() -> int:
         return convert_tshark_command(args)
     if args.command == "capture-tshark":
         return capture_tshark_command(args)
+    if args.command == "list-interfaces":
+        return list_interfaces_command(args)
     if args.command == "scan-tshark":
         return scan_tshark_command(args)
 
