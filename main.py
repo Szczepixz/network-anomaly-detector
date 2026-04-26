@@ -303,7 +303,11 @@ def print_analysis(
     print(f"Average duration: {stats.avg_duration_ms:.2f} ms")
     print(f"Average bytes sent: {stats.avg_bytes_sent:.2f}")
     print(f"Average bytes received: {stats.avg_bytes_received:.2f}")
+    print(f"Average total bytes: {stats.avg_total_bytes:.2f}")
     print(f"Average packets: {stats.avg_packets_total:.2f}")
+    print(f"Average bytes/sec: {stats.avg_bytes_per_second:.2f}")
+    print(f"Average packets/sec: {stats.avg_packets_per_second:.2f}")
+    print(f"Average sent/received ratio: {stats.avg_sent_received_ratio:.2f}")
     print(f"Protocols: {', '.join(stats.protocols)}")
 
     print()

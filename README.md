@@ -25,6 +25,13 @@ Each flow has a few basic features, for example:
 The program calculates average values and standard deviation for the dataset.
 Then it gives points to flows that stand out from the rest.
 
+It also calculates some simple extra features such as:
+- total bytes,
+- total packets,
+- bytes per second,
+- packets per second,
+- sent/received ratio.
+
 Right now the score is based on:
 - duration,
 - bytes sent,
