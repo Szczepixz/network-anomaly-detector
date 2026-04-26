@@ -36,7 +36,11 @@ Right now the score is based on:
 - duration,
 - bytes sent,
 - bytes received,
+- total bytes,
 - packet count,
+- bytes per second,
+- packets per second,
+- sent/received ratio,
 - failed logins.
 
 If the final score is greater than or equal to the selected threshold, the flow is treated as suspicious.

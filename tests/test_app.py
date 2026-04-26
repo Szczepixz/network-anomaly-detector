@@ -114,7 +114,7 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
 
         self.assertEqual(len(suspicious_flows), 1)
         self.assertEqual(suspicious_flows[0].flow.local_ip, "10.0.0.13")
-        self.assertAlmostEqual(suspicious_flows[0].score, 8.58, places=2)
+        self.assertAlmostEqual(suspicious_flows[0].score, 10.31, places=2)
 
     def test_load_flows_raises_error_for_missing_file(self) -> None:
         with self.assertRaises(FlowDataError):

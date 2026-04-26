@@ -50,12 +50,48 @@ def score_flows(flows: list[FlowRecord], stats: FlowStats) -> list[ScoredFlow]:
             score += bytes_received_z_score
             reasons.append(f"high bytes received (z={bytes_received_z_score:.2f})")
 
+        total_bytes_z_score = calculate_z_score(
+            flow.total_bytes, stats.avg_total_bytes, stats.std_total_bytes
+        )
+        if total_bytes_z_score >= Z_SCORE_LIMIT:
+            score += total_bytes_z_score
+            reasons.append(f"high total bytes (z={total_bytes_z_score:.2f})")
+
         packets_z_score = calculate_z_score(
             flow.total_packets, stats.avg_packets_total, stats.std_packets_total
         )
         if packets_z_score >= Z_SCORE_LIMIT:
             score += packets_z_score
             reasons.append(f"high packet count (z={packets_z_score:.2f})")
+
+        bytes_per_second_z_score = calculate_z_score(
+            flow.bytes_per_second,
+            stats.avg_bytes_per_second,
+            stats.std_bytes_per_second,
+        )
+        if bytes_per_second_z_score >= Z_SCORE_LIMIT:
+            score += bytes_per_second_z_score
+            reasons.append(f"high bytes per second (z={bytes_per_second_z_score:.2f})")
+
+        packets_per_second_z_score = calculate_z_score(
+            flow.packets_per_second,
+            stats.avg_packets_per_second,
+            stats.std_packets_per_second,
+        )
+        if packets_per_second_z_score >= Z_SCORE_LIMIT:
+            score += packets_per_second_z_score
+            reasons.append(f"high packets per second (z={packets_per_second_z_score:.2f})")
+
+        sent_received_ratio_z_score = calculate_z_score(
+            flow.sent_received_ratio,
+            stats.avg_sent_received_ratio,
+            stats.std_sent_received_ratio,
+        )
+        if sent_received_ratio_z_score >= Z_SCORE_LIMIT:
+            score += sent_received_ratio_z_score
+            reasons.append(
+                f"unusual sent/received ratio (z={sent_received_ratio_z_score:.2f})"
+            )
 
         if flow.failed_logins > 0:
             score += 1.5
