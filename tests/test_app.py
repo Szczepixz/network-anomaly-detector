@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from importlib.util import find_spec
 from pathlib import Path
 
 
@@ -22,6 +23,9 @@ from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
 from main import build_scan_paths, cleanup_scan_files
+
+
+HAS_SKLEARN = find_spec("sklearn") is not None
 
 
 class NetworkAnomalyDetectorTests(unittest.TestCase):
@@ -115,6 +119,21 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
         self.assertEqual(len(suspicious_flows), 1)
         self.assertEqual(suspicious_flows[0].flow.local_ip, "10.0.0.13")
         self.assertAlmostEqual(suspicious_flows[0].score, 10.31, places=2)
+
+    @unittest.skipUnless(HAS_SKLEARN, "scikit-learn is not installed in this Python")
+    def test_detect_suspicious_flows_supports_isolation_forest(self) -> None:
+        flows = load_flows(ROOT / "data" / "demo_flows.csv")
+        stats = calculate_flow_stats(flows)
+        suspicious_flows = detect_suspicious_flows(
+            flows,
+            stats,
+            method="isolation-forest",
+            contamination=0.2,
+        )
+
+        self.assertEqual(len(suspicious_flows), 1)
+        self.assertEqual(suspicious_flows[0].flow.local_ip, "10.0.0.13")
+        self.assertTrue(suspicious_flows[0].score > 0)
 
     def test_load_flows_raises_error_for_missing_file(self) -> None:
         with self.assertRaises(FlowDataError):

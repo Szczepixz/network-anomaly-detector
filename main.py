@@ -14,7 +14,7 @@ if str(SRC) not in sys.path:
 
 from network_anomaly_detector.capture import capture_tshark_csv, list_tshark_interfaces
 from network_anomaly_detector.datasets import FlowDataError, load_flows
-from network_anomaly_detector.detector import detect_suspicious_flows
+from network_anomaly_detector.detector import DetectorError, detect_suspicious_flows
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
@@ -34,7 +34,19 @@ def parse_args() -> argparse.Namespace:
         "--threshold",
         type=float,
         default=4.0,
-        help="Minimum anomaly score required to mark a flow as suspicious.",
+        help="Minimum anomaly score used by the statistical method.",
+    )
+    analyze_parser.add_argument(
+        "--method",
+        choices=("statistical", "isolation-forest"),
+        default="statistical",
+        help="Detection method.",
+    )
+    analyze_parser.add_argument(
+        "--contamination",
+        type=float,
+        default=0.2,
+        help="Expected anomaly ratio for Isolation Forest.",
     )
     analyze_parser.add_argument(
         "--output",
@@ -121,7 +133,19 @@ def parse_args() -> argparse.Namespace:
         "--threshold",
         type=float,
         default=2.0,
-        help="Minimum anomaly score required to mark a flow as suspicious.",
+        help="Minimum anomaly score used by the statistical method.",
+    )
+    scan_parser.add_argument(
+        "--method",
+        choices=("statistical", "isolation-forest"),
+        default="statistical",
+        help="Detection method.",
+    )
+    scan_parser.add_argument(
+        "--contamination",
+        type=float,
+        default=0.2,
+        help="Expected anomaly ratio for Isolation Forest.",
     )
     scan_parser.add_argument(
         "--packet-output",
@@ -195,13 +219,26 @@ def analyze_command(args: argparse.Namespace) -> int:
         return 1
 
     stats = calculate_flow_stats(flows)
-    suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
+    try:
+        suspicious_flows = detect_suspicious_flows(
+            flows,
+            stats,
+            threshold=args.threshold,
+            method=args.method,
+            contamination=args.contamination,
+        )
+    except DetectorError as error:
+        print(f"Error: {error}")
+        return 1
+
     print_analysis(
         input_path=args.input,
-        threshold=args.threshold,
         flows=flows,
         suspicious_flows=suspicious_flows,
         stats=stats,
+        method=args.method,
+        threshold=args.threshold,
+        contamination=args.contamination,
     )
 
     if args.output:
@@ -236,7 +273,17 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
         return 1
 
     stats = calculate_flow_stats(flows)
-    suspicious_flows = detect_suspicious_flows(flows, stats, threshold=args.threshold)
+    try:
+        suspicious_flows = detect_suspicious_flows(
+            flows,
+            stats,
+            threshold=args.threshold,
+            method=args.method,
+            contamination=args.contamination,
+        )
+    except DetectorError as error:
+        print(f"Error: {error}")
+        return 1
 
     print("Scan files")
     print(f"Packet CSV: {scan_paths['packet_output']}")
@@ -246,10 +293,12 @@ def scan_tshark_command(args: argparse.Namespace) -> int:
     print()
     print_analysis(
         input_path=scan_paths["flow_output"],
-        threshold=args.threshold,
         flows=flows,
         suspicious_flows=suspicious_flows,
         stats=stats,
+        method=args.method,
+        threshold=args.threshold,
+        contamination=args.contamination,
     )
 
     if args.output:
@@ -287,15 +336,21 @@ def cleanup_scan_files(scan_paths: dict[str, str]) -> None:
 
 def print_analysis(
     input_path: str,
-    threshold: float,
     flows: list,
     suspicious_flows: list,
     stats,
+    method: str,
+    threshold: float,
+    contamination: float,
 ) -> None:
     print("Summary")
     print(f"Input file: {input_path}")
+    print(f"Method: {method}")
     print(f"Loaded flows: {len(flows)}")
-    print(f"Threshold: {threshold:.1f}")
+    if method == "statistical":
+        print(f"Threshold: {threshold:.1f}")
+    else:
+        print(f"Contamination: {contamination:.2f}")
     print(f"Suspicious flows: {len(suspicious_flows)}")
 
     print()

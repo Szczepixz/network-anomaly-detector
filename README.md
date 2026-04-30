@@ -9,7 +9,8 @@ The current version can:
 - load flow records from a CSV file,
 - calculate basic traffic statistics,
 - assign a simple anomaly score to each flow,
-- show suspicious records based on a chosen threshold,
+- run Isolation Forest on flow features,
+- show suspicious records with the selected method,
 - save suspicious records to a CSV file.
 
 ## How It Works
@@ -24,6 +25,10 @@ Each flow has a few basic features, for example:
 
 The program calculates average values and standard deviation for the dataset.
 Then it gives points to flows that stand out from the rest.
+
+There are now two analysis methods:
+- `statistical` for the current z-score based scoring,
+- `isolation-forest` for a simple ML-based anomaly detector.
 
 It also calculates some simple extra features such as:
 - total bytes,
@@ -44,6 +49,7 @@ Right now the score is based on:
 - failed logins.
 
 If the final score is greater than or equal to the selected threshold, the flow is treated as suspicious.
+With Isolation Forest, the model marks the flows it considers unusual.
 
 ## Project Structure
 
@@ -68,6 +74,12 @@ Run with a custom threshold:
 python main.py analyze --input data/demo_flows.csv --threshold 6.5
 ```
 
+Run the ML-based mode:
+
+```bash
+python main.py analyze --input data/demo_flows.csv --method isolation-forest --contamination 0.2
+```
+
 Save suspicious flows to a CSV file:
 
 ```bash
@@ -78,6 +90,14 @@ python main.py analyze --input data/demo_flows.csv --output output/suspicious_fl
 
 ```bash
 python -m unittest discover -s tests -v
+```
+
+## Install
+
+If you want to use Isolation Forest:
+
+```bash
+pip install -r requirements.txt
 ```
 
 ## Real Data
@@ -94,6 +114,12 @@ Quick scan:
 
 ```bash
 python main.py scan-tshark --interface 7 --local-ip 192.168.33.16 --count 50 --threshold 2 --cleanup
+```
+
+Quick scan with Isolation Forest:
+
+```bash
+python main.py scan-tshark --interface 7 --local-ip 192.168.33.16 --count 50 --method isolation-forest --contamination 0.2 --cleanup
 ```
 
 By default, scan files are saved with a timestamp, so older scans are not overwritten.
@@ -128,6 +154,7 @@ The project already includes:
 - CSV loader,
 - basic statistics,
 - simple statistical anomaly scoring,
+- Isolation Forest support,
 - CLI arguments,
 - tshark capture,
 - tshark CSV conversion,
