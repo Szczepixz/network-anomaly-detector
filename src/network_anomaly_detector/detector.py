@@ -4,8 +4,10 @@ from dataclasses import dataclass
 
 try:
     from sklearn.ensemble import IsolationForest
+    from sklearn.neighbors import LocalOutlierFactor
 except ImportError:
     IsolationForest = None
+    LocalOutlierFactor = None
 
 from .features import FlowRecord
 from .stats import FlowStats
@@ -24,7 +26,7 @@ class DetectorError(Exception):
 
 
 Z_SCORE_LIMIT = 1.3
-SUPPORTED_METHODS = ("statistical", "isolation-forest")
+SUPPORTED_METHODS = ("statistical", "isolation-forest", "local-outlier-factor")
 
 
 def calculate_z_score(value: float, mean: float, std_dev: float) -> float:
@@ -136,6 +138,10 @@ def build_feature_vector(flow: FlowRecord) -> list[float]:
     ]
 
 
+def build_feature_matrix(flows: list[FlowRecord]) -> list[list[float]]:
+    return [build_feature_vector(flow) for flow in flows]
+
+
 def score_flows_isolation_forest(
     flows: list[FlowRecord],
     stats: FlowStats,
@@ -153,7 +159,7 @@ def score_flows_isolation_forest(
         contamination=contamination,
         random_state=42,
     )
-    feature_matrix = [build_feature_vector(flow) for flow in flows]
+    feature_matrix = build_feature_matrix(flows)
     predictions = model.fit_predict(feature_matrix)
     raw_scores = model.score_samples(feature_matrix)
     max_raw_score = max(raw_scores)
@@ -179,6 +185,50 @@ def score_flows_isolation_forest(
     return scored_flows
 
 
+def score_flows_local_outlier_factor(
+    flows: list[FlowRecord],
+    stats: FlowStats,
+    contamination: float = 0.2,
+) -> list[ScoredFlow]:
+    if LocalOutlierFactor is None:
+        raise DetectorError(
+            "Local Outlier Factor needs scikit-learn in the current Python environment."
+        )
+
+    if len(flows) < 3:
+        raise DetectorError("Local Outlier Factor needs at least 3 flows.")
+
+    feature_matrix = build_feature_matrix(flows)
+    neighbor_count = min(5, len(flows) - 1)
+    model = LocalOutlierFactor(
+        contamination=contamination,
+        n_neighbors=neighbor_count,
+    )
+    predictions = model.fit_predict(feature_matrix)
+    raw_scores = list(model.negative_outlier_factor_)
+    max_raw_score = max(raw_scores)
+
+    scored_flows: list[ScoredFlow] = []
+
+    for flow, prediction, raw_score in zip(flows, predictions, raw_scores):
+        score = max_raw_score - float(raw_score)
+        _, reasons = build_statistical_score(flow, stats)
+
+        if prediction == -1 and not reasons:
+            reasons.append("unusual local density around this flow")
+
+        scored_flows.append(
+            ScoredFlow(
+                flow=flow,
+                score=score,
+                reasons=reasons,
+                is_suspicious=prediction == -1,
+            )
+        )
+
+    return scored_flows
+
+
 def detect_suspicious_flows(
     flows: list[FlowRecord],
     stats: FlowStats,
@@ -191,6 +241,14 @@ def detect_suspicious_flows(
 
     if method == "isolation-forest":
         scored_flows = score_flows_isolation_forest(
+            flows,
+            stats,
+            contamination=contamination,
+        )
+        return [scored_flow for scored_flow in scored_flows if scored_flow.is_suspicious]
+
+    if method == "local-outlier-factor":
+        scored_flows = score_flows_local_outlier_factor(
             flows,
             stats,
             contamination=contamination,

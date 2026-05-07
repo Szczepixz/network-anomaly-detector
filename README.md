@@ -10,6 +10,8 @@ The current version can:
 - calculate basic traffic statistics,
 - assign a simple anomaly score to each flow,
 - run Isolation Forest on flow features,
+- run Local Outlier Factor on flow features,
+- compare detection methods on the same dataset,
 - show suspicious records with the selected method,
 - save suspicious records to a CSV file.
 
@@ -26,9 +28,10 @@ Each flow has a few basic features, for example:
 The program calculates average values and standard deviation for the dataset.
 Then it gives points to flows that stand out from the rest.
 
-There are now two analysis methods:
+There are now three analysis methods:
 - `statistical` for the current z-score based scoring,
-- `isolation-forest` for a simple ML-based anomaly detector.
+- `isolation-forest` for a simple ML-based anomaly detector,
+- `local-outlier-factor` for a second ML-based anomaly detector.
 
 It also calculates some simple extra features such as:
 - total bytes,
@@ -80,6 +83,18 @@ Run the ML-based mode:
 python main.py analyze --input data/demo_flows.csv --method isolation-forest --contamination 0.2
 ```
 
+Run the second ML-based mode:
+
+```bash
+python main.py analyze --input data/demo_flows.csv --method local-outlier-factor --contamination 0.2
+```
+
+Compare all methods on the same file:
+
+```bash
+python main.py compare-methods --input data/demo_flows.csv --threshold 4 --contamination 0.2
+```
+
 Save suspicious flows to a CSV file:
 
 ```bash
@@ -122,6 +137,12 @@ Quick scan with Isolation Forest:
 python main.py scan-tshark --interface 7 --local-ip 192.168.33.16 --count 50 --method isolation-forest --contamination 0.2 --cleanup
 ```
 
+Quick scan with Local Outlier Factor:
+
+```bash
+python main.py scan-tshark --interface 7 --local-ip 192.168.33.16 --count 50 --method local-outlier-factor --contamination 0.2 --cleanup
+```
+
 By default, scan files are saved with a timestamp, so older scans are not overwritten.
 Use `--cleanup` if you do not want to keep the packet and flow CSV files after the scan.
 
@@ -155,6 +176,8 @@ The project already includes:
 - basic statistics,
 - simple statistical anomaly scoring,
 - Isolation Forest support,
+- Local Outlier Factor support,
+- method comparison mode,
 - CLI arguments,
 - tshark capture,
 - tshark CSV conversion,

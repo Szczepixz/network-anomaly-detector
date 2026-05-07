@@ -14,7 +14,11 @@ if str(SRC) not in sys.path:
 
 from network_anomaly_detector.capture import capture_tshark_csv, list_tshark_interfaces
 from network_anomaly_detector.datasets import FlowDataError, load_flows
-from network_anomaly_detector.detector import DetectorError, detect_suspicious_flows
+from network_anomaly_detector.detector import (
+    DetectorError,
+    SUPPORTED_METHODS,
+    detect_suspicious_flows,
+)
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
 from network_anomaly_detector.stats import calculate_flow_stats
@@ -38,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     )
     analyze_parser.add_argument(
         "--method",
-        choices=("statistical", "isolation-forest"),
+        choices=SUPPORTED_METHODS,
         default="statistical",
         help="Detection method.",
     )
@@ -51,6 +55,28 @@ def parse_args() -> argparse.Namespace:
     analyze_parser.add_argument(
         "--output",
         help="Optional path to save suspicious flows as CSV.",
+    )
+
+    compare_parser = subparsers.add_parser(
+        "compare-methods",
+        help="Run all detection methods on the same flow CSV and compare the results.",
+    )
+    compare_parser.add_argument(
+        "--input",
+        default=str(ROOT / "data" / "demo_flows.csv"),
+        help="Path to the CSV file with flow data.",
+    )
+    compare_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=4.0,
+        help="Minimum anomaly score used by the statistical method.",
+    )
+    compare_parser.add_argument(
+        "--contamination",
+        type=float,
+        default=0.2,
+        help="Expected anomaly ratio for ML methods.",
     )
 
     convert_parser = subparsers.add_parser(
@@ -137,7 +163,7 @@ def parse_args() -> argparse.Namespace:
     )
     scan_parser.add_argument(
         "--method",
-        choices=("statistical", "isolation-forest"),
+        choices=SUPPORTED_METHODS,
         default="statistical",
         help="Detection method.",
     )
@@ -246,6 +272,39 @@ def analyze_command(args: argparse.Namespace) -> int:
         print()
         print(f"Saved suspicious flows to: {args.output}")
 
+    return 0
+
+
+def compare_methods_command(args: argparse.Namespace) -> int:
+    try:
+        flows = load_flows(args.input)
+    except FlowDataError as error:
+        print(f"Error: {error}")
+        return 1
+
+    stats = calculate_flow_stats(flows)
+    results: dict[str, list] = {}
+
+    for method in SUPPORTED_METHODS:
+        try:
+            results[method] = detect_suspicious_flows(
+                flows,
+                stats,
+                threshold=args.threshold,
+                method=method,
+                contamination=args.contamination,
+            )
+        except DetectorError as error:
+            print(f"Error in {method}: {error}")
+            return 1
+
+    print_method_comparison(
+        input_path=args.input,
+        total_flows=len(flows),
+        threshold=args.threshold,
+        contamination=args.contamination,
+        results=results,
+    )
     return 0
 
 
@@ -373,14 +432,55 @@ def print_analysis(
         print(
             f"{suspicious_flow.flow.local_ip}:{suspicious_flow.flow.local_port} <-> "
             f"{suspicious_flow.flow.remote_ip}:{suspicious_flow.flow.remote_port} | "
-            f"score={suspicious_flow.score:.1f} | "
+            f"score={format_score(suspicious_flow.score)} | "
             f"{', '.join(suspicious_flow.reasons)}"
         )
+
+
+def print_method_comparison(
+    input_path: str,
+    total_flows: int,
+    threshold: float,
+    contamination: float,
+    results: dict[str, list],
+) -> None:
+    print("Method comparison")
+    print(f"Input file: {input_path}")
+    print(f"Loaded flows: {total_flows}")
+    print(f"Statistical threshold: {threshold:.1f}")
+    print(f"ML contamination: {contamination:.2f}")
+
+    for method in SUPPORTED_METHODS:
+        suspicious_flows = results[method]
+        print()
+        print(method)
+        print(f"Suspicious flows: {len(suspicious_flows)}")
+        if not suspicious_flows:
+            print("No suspicious flows detected.")
+            continue
+
+        for suspicious_flow in suspicious_flows[:3]:
+            print(
+                f"{suspicious_flow.flow.local_ip}:{suspicious_flow.flow.local_port} <-> "
+                f"{suspicious_flow.flow.remote_ip}:{suspicious_flow.flow.remote_port} | "
+                f"score={format_score(suspicious_flow.score)} | "
+                f"{', '.join(suspicious_flow.reasons)}"
+            )
+
+
+def format_score(score: float) -> str:
+    if score < 1:
+        return f"{score:.3f}"
+    return f"{score:.1f}"
 
 
 def main() -> int:
     args = parse_args()
 
+    if args.command == "analyze":
+        return analyze_command(args)
+    if args.command == "compare-methods":
+        return compare_methods_command(args)
     if args.command == "convert-tshark":
         return convert_tshark_command(args)
     if args.command == "capture-tshark":
@@ -389,8 +489,7 @@ def main() -> int:
         return list_interfaces_command(args)
     if args.command == "scan-tshark":
         return scan_tshark_command(args)
-
-    return analyze_command(args)
+    return 0
 
 
 if __name__ == "__main__":

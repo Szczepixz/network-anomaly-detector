@@ -135,6 +135,21 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
         self.assertEqual(suspicious_flows[0].flow.local_ip, "10.0.0.13")
         self.assertTrue(suspicious_flows[0].score > 0)
 
+    @unittest.skipUnless(HAS_SKLEARN, "scikit-learn is not installed in this Python")
+    def test_detect_suspicious_flows_supports_local_outlier_factor(self) -> None:
+        flows = load_flows(ROOT / "data" / "demo_flows.csv")
+        stats = calculate_flow_stats(flows)
+        suspicious_flows = detect_suspicious_flows(
+            flows,
+            stats,
+            method="local-outlier-factor",
+            contamination=0.2,
+        )
+
+        self.assertEqual(len(suspicious_flows), 1)
+        self.assertEqual(suspicious_flows[0].flow.local_ip, "10.0.0.14")
+        self.assertTrue(suspicious_flows[0].score >= 0)
+
     def test_load_flows_raises_error_for_missing_file(self) -> None:
         with self.assertRaises(FlowDataError):
             load_flows(ROOT / "data" / "missing.csv")
