@@ -432,6 +432,7 @@ def print_analysis(
         print(
             f"{suspicious_flow.flow.local_ip}:{suspicious_flow.flow.local_port} <-> "
             f"{suspicious_flow.flow.remote_ip}:{suspicious_flow.flow.remote_port} | "
+            f"protocol={suspicious_flow.flow.protocol} | "
             f"score={format_score(suspicious_flow.score)} | "
             f"{', '.join(suspicious_flow.reasons)}"
         )
@@ -463,6 +464,7 @@ def print_method_comparison(
             print(
                 f"{suspicious_flow.flow.local_ip}:{suspicious_flow.flow.local_port} <-> "
                 f"{suspicious_flow.flow.remote_ip}:{suspicious_flow.flow.remote_port} | "
+                f"protocol={suspicious_flow.flow.protocol} | "
                 f"score={format_score(suspicious_flow.score)} | "
                 f"{', '.join(suspicious_flow.reasons)}"
             )
