@@ -450,6 +450,8 @@ def print_method_comparison(
     print(f"Loaded flows: {total_flows}")
     print(f"Statistical threshold: {threshold:.1f}")
     print(f"ML contamination: {contamination:.2f}")
+    print()
+    print_method_agreement(results)
 
     for method in SUPPORTED_METHODS:
         suspicious_flows = results[method]
@@ -468,6 +470,62 @@ def print_method_comparison(
                 f"score={format_score(suspicious_flow.score)} | "
                 f"{', '.join(suspicious_flow.reasons)}"
             )
+
+
+def print_method_agreement(results: dict[str, list]) -> None:
+    print("Method agreement")
+
+    detections_by_flow: dict[tuple[str, str, int, str, str, int], set[str]] = {}
+
+    for method, suspicious_flows in results.items():
+        for suspicious_flow in suspicious_flows:
+            key = build_flow_key(suspicious_flow.flow)
+            detections_by_flow.setdefault(key, set()).add(method)
+
+    groups = {
+        "Detected by all methods": [],
+        "Detected by two methods": [],
+        "Detected by one method": [],
+    }
+
+    for key, methods in detections_by_flow.items():
+        flow_summary = format_flow_key(key)
+        method_list = ", ".join(sorted(methods))
+        line = f"{flow_summary} | methods={method_list}"
+
+        if len(methods) == len(SUPPORTED_METHODS):
+            groups["Detected by all methods"].append(line)
+        elif len(methods) == 2:
+            groups["Detected by two methods"].append(line)
+        else:
+            groups["Detected by one method"].append(line)
+
+    for title, lines in groups.items():
+        print(title)
+        if not lines:
+            print("None")
+            continue
+        for line in lines:
+            print(line)
+
+
+def build_flow_key(flow) -> tuple[str, str, int, str, str, int]:
+    return (
+        flow.local_ip,
+        flow.remote_ip,
+        flow.remote_port,
+        flow.protocol,
+        flow.timestamp,
+        flow.local_port,
+    )
+
+
+def format_flow_key(flow_key: tuple[str, str, int, str, str, int]) -> str:
+    local_ip, remote_ip, remote_port, protocol, timestamp, local_port = flow_key
+    return (
+        f"{local_ip}:{local_port} <-> {remote_ip}:{remote_port} | "
+        f"protocol={protocol} | timestamp={timestamp}"
+    )
 
 
 def format_score(score: float) -> str:
