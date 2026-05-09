@@ -168,6 +168,23 @@ python main.py convert-tshark --input data/real_tshark_packets.csv --output outp
 python main.py analyze --input output/real_flows.csv --threshold 2
 ```
 
+## Results
+
+I tested the project on a bigger real traffic sample captured with `tshark`.
+
+- `5000` packets were captured
+- they were converted into `130` flows
+- `statistical` detected `22` suspicious flows
+- `isolation-forest` detected `26`
+- `local-outlier-factor` also detected `26`
+
+The most interesting part was the overlap between methods.
+`8` flows were detected by all three methods, so they can be treated as the strongest anomaly candidates in that sample.
+
+The methods did not always agree on everything.
+It shows that each method looks at the data a bit differently.
+The statistical method focused more on strong feature differences, while the ML-based methods also caught flows that looked unusual in a less obvious way.
+
 ## Current Status
 
 The project already includes:
