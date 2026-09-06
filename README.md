@@ -25,6 +25,13 @@ Each flow has a few basic features, for example:
 - packets sent and received,
 - failed logins.
 
+The CSV loader checks numeric values before the analysis starts.
+Duration, byte counts, and packet counts must be zero or greater.
+Values such as `NaN` and infinity are not allowed.
+Ports must be whole numbers from `0` to `65535`, and failed logins must be a whole
+number of zero or greater. If a value is invalid, the error message includes the
+CSV row number and column name.
+
 The program calculates average values and standard deviation for the dataset.
 Then it gives points to flows that stand out from the rest.
 
