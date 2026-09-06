@@ -18,6 +18,7 @@ from network_anomaly_detector.detector import (
     DetectorError,
     SUPPORTED_METHODS,
     detect_suspicious_flows,
+    validate_detector_options,
 )
 from network_anomaly_detector.convert import convert_tshark_packets_to_flows
 from network_anomaly_detector.export import save_suspicious_flows_csv
@@ -38,7 +39,7 @@ def parse_args() -> argparse.Namespace:
         "--threshold",
         type=float,
         default=4.0,
-        help="Minimum anomaly score used by the statistical method.",
+        help="Minimum anomaly score for the statistical method (finite and >= 0).",
     )
     analyze_parser.add_argument(
         "--method",
@@ -50,7 +51,7 @@ def parse_args() -> argparse.Namespace:
         "--contamination",
         type=float,
         default=0.2,
-        help="Expected anomaly ratio for Isolation Forest.",
+        help="Expected anomaly ratio for ML methods (greater than 0 and at most 0.5).",
     )
     analyze_parser.add_argument(
         "--output",
@@ -70,13 +71,13 @@ def parse_args() -> argparse.Namespace:
         "--threshold",
         type=float,
         default=4.0,
-        help="Minimum anomaly score used by the statistical method.",
+        help="Minimum anomaly score for the statistical method (finite and >= 0).",
     )
     compare_parser.add_argument(
         "--contamination",
         type=float,
         default=0.2,
-        help="Expected anomaly ratio for ML methods.",
+        help="Expected anomaly ratio for ML methods (greater than 0 and at most 0.5).",
     )
 
     convert_parser = subparsers.add_parser(
@@ -159,7 +160,7 @@ def parse_args() -> argparse.Namespace:
         "--threshold",
         type=float,
         default=2.0,
-        help="Minimum anomaly score used by the statistical method.",
+        help="Minimum anomaly score for the statistical method (finite and >= 0).",
     )
     scan_parser.add_argument(
         "--method",
@@ -171,7 +172,7 @@ def parse_args() -> argparse.Namespace:
         "--contamination",
         type=float,
         default=0.2,
-        help="Expected anomaly ratio for Isolation Forest.",
+        help="Expected anomaly ratio for ML methods (greater than 0 and at most 0.5).",
     )
     scan_parser.add_argument(
         "--packet-output",
@@ -536,6 +537,15 @@ def format_score(score: float) -> str:
 
 def main() -> int:
     args = parse_args()
+
+    if args.command in ("analyze", "compare-methods", "scan-tshark"):
+        methods = SUPPORTED_METHODS if args.command == "compare-methods" else (args.method,)
+        try:
+            for method in methods:
+                validate_detector_options(method, args.threshold, args.contamination)
+        except DetectorError as error:
+            print(f"Error: {error}")
+            return 1
 
     if args.command == "analyze":
         return analyze_command(args)

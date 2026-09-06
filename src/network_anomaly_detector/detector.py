@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 try:
     from sklearn.ensemble import IsolationForest
@@ -27,6 +28,22 @@ class DetectorError(Exception):
 
 Z_SCORE_LIMIT = 1.3
 SUPPORTED_METHODS = ("statistical", "isolation-forest", "local-outlier-factor")
+
+
+def validate_detector_options(
+    method: str, threshold: float, contamination: float
+) -> None:
+    """Check the options used by the selected detection method."""
+    if method not in SUPPORTED_METHODS:
+        raise DetectorError(f"Unsupported detection method: {method}")
+
+    if method == "statistical":
+        if not isfinite(threshold) or threshold < 0:
+            raise DetectorError(
+                "Threshold must be a finite number greater than or equal to 0."
+            )
+    elif not 0 < contamination <= 0.5:
+        raise DetectorError("Contamination must be greater than 0 and at most 0.5.")
 
 
 def calculate_z_score(value: float, mean: float, std_dev: float) -> float:
@@ -236,8 +253,7 @@ def detect_suspicious_flows(
     method: str = "statistical",
     contamination: float = 0.2,
 ) -> list[ScoredFlow]:
-    if method not in SUPPORTED_METHODS:
-        raise DetectorError(f"Unsupported detection method: {method}")
+    validate_detector_options(method, threshold, contamination)
 
     if method == "isolation-forest":
         scored_flows = score_flows_isolation_forest(

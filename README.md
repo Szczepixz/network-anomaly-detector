@@ -72,6 +72,12 @@ network-anomaly-detector/
 
 ## Running The Project
 
+For the statistical method, `--threshold` must be zero or greater.
+For the ML methods, `--contamination` must be greater than `0` and at most `0.5`.
+These options do not accept `NaN` or infinity. The program checks the options used
+by the selected method before reading data or capturing packets.
+The `compare-methods` command checks both options.
+
 Run the demo dataset:
 
 ```bash
