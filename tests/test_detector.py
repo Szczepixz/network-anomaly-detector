@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from contextlib import redirect_stdout
+from dataclasses import replace
 from importlib.util import find_spec
 from io import StringIO
 from pathlib import Path
@@ -15,12 +16,45 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from network_anomaly_detector.datasets import load_flows
-from network_anomaly_detector.detector import DetectorError, detect_suspicious_flows
+from network_anomaly_detector.detector import (
+    DetectorError,
+    detect_suspicious_flows,
+    score_flows,
+)
 from network_anomaly_detector.stats import calculate_flow_stats
 from main import main
 
 
 HAS_SKLEARN = find_spec("sklearn") is not None
+
+
+class StatisticalScoringTests(unittest.TestCase):
+    def test_detected_flow_is_marked_as_suspicious(self) -> None:
+        flows = load_flows(ROOT / "data" / "demo_flows.csv")
+        results = detect_suspicious_flows(flows, calculate_flow_stats(flows))
+
+        self.assertEqual(len(results), 1)
+        self.assertTrue(results[0].is_suspicious)
+
+    def test_statistical_flags_follow_the_selected_threshold(self) -> None:
+        base = load_flows(ROOT / "data" / "demo_flows.csv")[0]
+        flows = [replace(base, failed_logins=0), replace(base, failed_logins=1)]
+        stats = calculate_flow_stats(flows)
+        # Identical traffic features give scores of 0 and 1.5 (for failed logins).
+        cases = [
+            (0.0, [True, True], flows),
+            (1.5, [False, True], [flows[1]]),
+            (2.0, [False, False], []),
+        ]
+        for threshold, expected_flags, expected_flows in cases:
+            with self.subTest(threshold=threshold):
+                scored = score_flows(flows, stats, threshold=threshold)
+                detected = detect_suspicious_flows(flows, stats, threshold=threshold)
+
+                self.assertEqual([item.score for item in scored], [0.0, 1.5])
+                self.assertEqual([item.is_suspicious for item in scored], expected_flags)
+                self.assertEqual([item.flow for item in detected], expected_flows)
+                self.assertTrue(all(item.is_suspicious for item in detected))
 
 
 class DetectorValidationTests(unittest.TestCase):

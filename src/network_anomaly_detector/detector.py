@@ -52,12 +52,21 @@ def calculate_z_score(value: float, mean: float, std_dev: float) -> float:
     return (value - mean) / std_dev
 
 
-def score_flows(flows: list[FlowRecord], stats: FlowStats) -> list[ScoredFlow]:
+def score_flows(
+    flows: list[FlowRecord], stats: FlowStats, threshold: float = 4.0
+) -> list[ScoredFlow]:
     scored_flows: list[ScoredFlow] = []
 
     for flow in flows:
         score, reasons = build_statistical_score(flow, stats)
-        scored_flows.append(ScoredFlow(flow=flow, score=score, reasons=reasons))
+        scored_flows.append(
+            ScoredFlow(
+                flow=flow,
+                score=score,
+                reasons=reasons,
+                is_suspicious=score >= threshold,
+            )
+        )
 
     return scored_flows
 
@@ -271,5 +280,5 @@ def detect_suspicious_flows(
         )
         return [scored_flow for scored_flow in scored_flows if scored_flow.is_suspicious]
 
-    scored_flows = score_flows(flows, stats)
-    return [scored_flow for scored_flow in scored_flows if scored_flow.score >= threshold]
+    scored_flows = score_flows(flows, stats, threshold=threshold)
+    return [scored_flow for scored_flow in scored_flows if scored_flow.is_suspicious]
