@@ -119,6 +119,17 @@ pip install -r requirements.txt
 
 The project can capture a small packet sample with tshark and convert it into the flow format used by the detector.
 
+Packets with the same local and remote IP addresses, ports, and transport protocol
+are grouped into one flow. This includes both sent and received packets.
+The converter uses the TCP and UDP port columns to identify the transport protocol.
+For example, packets marked as `TCP` and `TLSv1.2` can belong to the same TCP flow.
+TCP and UDP packets are kept in separate flows.
+
+The flow's `protocol` field is set to `TCP` or `UDP`. If the port fields are empty,
+the converter uses the original protocol label, or `UNKNOWN` if there is no label.
+It does not yet split flows after a period with no traffic. Separate sessions with
+the same addresses, ports, and transport protocol may therefore be grouped together.
+
 List available interfaces:
 
 ```bash
@@ -170,6 +181,12 @@ python main.py analyze --input output/real_flows.csv --threshold 2
 
 ## Results
 
+These results are from before the flow grouping fix.
+I used `--threshold 2 --contamination 0.2`.
+The updated converter may produce different results for the same data.
+The sample does not tell us which flows are actual threats, so these results
+do not show how accurate the detector is.
+
 I tested the project on a bigger real traffic sample captured with `tshark`.
 
 - `5000` packets were captured
@@ -179,7 +196,8 @@ I tested the project on a bigger real traffic sample captured with `tshark`.
 - `local-outlier-factor` also detected `26`
 
 The most interesting part was the overlap between methods.
-`8` flows were detected by all three methods, so they can be treated as the strongest anomaly candidates in that sample.
+`8` flows were detected by all three methods.
+This does not mean they were actual threats, but they are worth checking.
 
 The methods did not always agree on everything.
 It shows that each method looks at the data a bit differently.

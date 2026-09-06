@@ -45,7 +45,7 @@ def _load_packet_rows(input_path: str | Path) -> list[PacketRow]:
                     dst_ip=row["ip.dst"],
                     src_port=_read_port(row, "tcp.srcport", "udp.srcport"),
                     dst_port=_read_port(row, "tcp.dstport", "udp.dstport"),
-                    protocol=row.get("_ws.col.protocol") or "UNKNOWN",
+                    protocol=_read_protocol(row),
                     length=float(row["frame.len"]),
                 )
                 for row in reader
@@ -156,6 +156,15 @@ def _read_port(row: dict[str, str], tcp_field: str, udp_field: str) -> int:
     value = row.get(tcp_field) or row.get(udp_field) or "0"
     value = value.split(",")[0].strip()
     return int(value) if value else 0
+
+
+def _read_protocol(row: dict[str, str]) -> str:
+    """Use transport fields so application labels do not split a flow."""
+    if row.get("tcp.srcport") or row.get("tcp.dstport"):
+        return "TCP"
+    if row.get("udp.srcport") or row.get("udp.dstport"):
+        return "UDP"
+    return row.get("_ws.col.protocol") or "UNKNOWN"
 
 
 def _classify_packet_direction(packet: PacketRow, local_ip: str) -> str | None:

@@ -4,6 +4,7 @@ import sys
 import unittest
 from importlib.util import find_spec
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -230,6 +231,63 @@ class NetworkAnomalyDetectorTests(unittest.TestCase):
                 input_path.unlink()
             if output_path.exists():
                 output_path.unlink()
+
+    def test_convert_tshark_merges_application_protocols_in_one_flow(self) -> None:
+        cases = [
+            ("TCP", ("TCP", "TLSv1.2", "TLSv1.3"), "50000,443,,", "443,50000,,"),
+            ("UDP", ("UDP", "QUIC", "QUIC"), ",,50000,443", ",,443,50000"),
+        ]
+        for protocol, labels, outgoing_ports, incoming_ports in cases:
+            with self.subTest(protocol=protocol), TemporaryDirectory() as directory:
+                input_path = Path(directory) / "packets.csv"
+                output_path = Path(directory) / "flows.csv"
+                input_path.write_text(
+                    "frame.time_epoch,ip.src,ip.dst,_ws.col.protocol,frame.len,"
+                    "tcp.srcport,tcp.dstport,udp.srcport,udp.dstport\n"
+                    f"1700000000,192.168.1.10,192.168.1.1,{labels[0]},100,{outgoing_ports}\n"
+                    f"1700000001,192.168.1.1,192.168.1.10,{labels[1]},200,{incoming_ports}\n"
+                    f"1700000002,192.168.1.10,192.168.1.1,{labels[2]},300,{outgoing_ports}\n",
+                    encoding="utf-8",
+                )
+
+                convert_tshark_packets_to_flows(
+                    input_path, output_path, local_ip="192.168.1.10"
+                )
+                flows = load_flows(output_path)
+
+                self.assertEqual(len(flows), 1)
+                flow = flows[0]
+                self.assertEqual(flow.protocol, protocol)
+                self.assertEqual(flow.local_port, 50000)
+                self.assertEqual(flow.remote_port, 443)
+                self.assertEqual(flow.bytes_sent, 400.0)
+                self.assertEqual(flow.bytes_received, 200.0)
+                self.assertEqual(flow.packets_sent, 2)
+                self.assertEqual(flow.packets_received, 1)
+                self.assertEqual(flow.duration_ms, 2000.0)
+
+    def test_convert_tshark_keeps_tcp_and_udp_flows_separate(self) -> None:
+        with TemporaryDirectory() as directory:
+            input_path = Path(directory) / "packets.csv"
+            output_path = Path(directory) / "flows.csv"
+            input_path.write_text(
+                "frame.time_epoch,ip.src,ip.dst,_ws.col.protocol,frame.len,"
+                "tcp.srcport,tcp.dstport,udp.srcport,udp.dstport\n"
+                "1700000000,192.168.1.10,192.168.1.1,DNS,100,50000,53,,\n"
+                "1700000001,192.168.1.10,192.168.1.1,DNS,200,,,50000,53\n",
+                encoding="utf-8",
+            )
+
+            convert_tshark_packets_to_flows(
+                input_path, output_path, local_ip="192.168.1.10"
+            )
+            flows = load_flows(output_path)
+
+            self.assertEqual(len(flows), 2)
+            flows_by_protocol = {flow.protocol: flow for flow in flows}
+            self.assertEqual(set(flows_by_protocol), {"TCP", "UDP"})
+            self.assertEqual(flows_by_protocol["TCP"].bytes_sent, 100.0)
+            self.assertEqual(flows_by_protocol["UDP"].bytes_sent, 200.0)
 
 
 if __name__ == "__main__":
