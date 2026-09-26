@@ -151,6 +151,35 @@ the converter uses the original protocol label, or `UNKNOWN` if there is no labe
 It does not yet split flows after a period with no traffic. Separate sessions with
 the same addresses, ports, and transport protocol may therefore be grouped together.
 
+### Packet CSV contract
+
+The converter requires `frame.time_epoch`, `ip.src`, `ip.dst`, and `frame.len`
+headers. It accepts both `_ws.col.Protocol` (used by capture) and the legacy
+`_ws.col.protocol` header. TCP/UDP port columns are optional; absent or empty
+ports are represented as zero.
+
+- The selected local address must be IPv4. Rows with both IPv4 address fields
+  empty are skipped (for example, IPv6 or non-IP traffic). A partially missing
+  address or an invalid IPv4 address is an error.
+- Timestamps must be finite Unix timestamps representable by Python's datetime
+  on the current platform. Frame lengths must be positive integer byte counts;
+  ports must be integers from 0 to 65535.
+- Multiple addresses or ports in one field, mixed TCP/UDP port fields, and rows
+  with the wrong number of fields are rejected. Encapsulated traffic with multiple
+  network/transport headers is not supported.
+- Invalid packet records stop conversion with the CSV row number and field
+  information. Validation completes before the output file is opened, so invalid
+  input does not overwrite an existing flow CSV. Read/write failures are reported
+  as application errors; output writes are not transactional.
+
+Timestamps use microsecond resolution, and flow durations retain that resolution
+in milliseconds. Sub-microsecond differences cannot be represented. Single-packet
+flows still have zero duration and use zero rate features as a placeholder, not
+as a measured traffic rate. Byte counts refer to `frame.len`, not payload size.
+`failed_logins` is still written as zero for format compatibility: packet metadata
+does not establish whether authentication failures occurred. These limitations
+must be considered when interpreting detection results.
+
 List available interfaces:
 
 ```bash
