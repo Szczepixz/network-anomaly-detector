@@ -125,6 +125,9 @@ python main.py analyze --input data/demo_flows.csv --output output/suspicious_fl
 python -m unittest discover -s tests -v
 ```
 
+GitHub Actions runs the tests on every push and pull request.
+It uses Python 3.12 on Ubuntu and installs the dependencies from `requirements.txt`.
+
 ## Install
 
 If you want to use Isolation Forest:
