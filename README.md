@@ -61,6 +61,11 @@ Right now the score is based on:
 If the final score is greater than or equal to the selected threshold, the flow is treated as suspicious.
 With Isolation Forest, the model marks the flows it considers unusual.
 
+Suspicious flows are listed from highest to lowest score. CSV exports use the same order.
+Flows with equal scores keep their original order.
+For each method, `compare-methods` shows up to three flows with the highest scores.
+Scores from different methods use different scales and should not be compared directly.
+
 ## Project Structure
 
 ```text

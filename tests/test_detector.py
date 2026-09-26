@@ -42,7 +42,7 @@ class StatisticalScoringTests(unittest.TestCase):
         stats = calculate_flow_stats(flows)
         # Identical traffic features give scores of 0 and 1.5 (for failed logins).
         cases = [
-            (0.0, [True, True], flows),
+            (0.0, [True, True], [flows[1], flows[0]]),
             (1.5, [False, True], [flows[1]]),
             (2.0, [False, False], []),
         ]
@@ -55,6 +55,48 @@ class StatisticalScoringTests(unittest.TestCase):
                 self.assertEqual([item.is_suspicious for item in scored], expected_flags)
                 self.assertEqual([item.flow for item in detected], expected_flows)
                 self.assertTrue(all(item.is_suspicious for item in detected))
+
+
+class DetectorOrderingTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.flows = load_flows(ROOT / "data" / "demo_flows.csv")
+        self.stats = calculate_flow_stats(self.flows)
+
+    def test_statistical_alerts_are_sorted_by_score(self) -> None:
+        original_order = list(self.flows)
+
+        results = detect_suspicious_flows(self.flows, self.stats, threshold=0.0)
+
+        self.assertEqual(len(results), len(self.flows))
+        self.assertEqual(results[0].flow, self.flows[3])
+        for higher, lower in zip(results, results[1:]):
+            self.assertGreaterEqual(higher.score, lower.score)
+        self.assertEqual(self.flows, original_order)
+
+    def test_equal_scores_keep_the_input_order(self) -> None:
+        base = self.flows[0]
+        first = replace(base, failed_logins=1, timestamp="2026-03-26T10:01:00")
+        second = replace(base, failed_logins=1, timestamp="2026-03-26T10:02:00")
+        flows = [base, first, second]
+
+        results = detect_suspicious_flows(
+            flows, calculate_flow_stats(flows), threshold=0.0
+        )
+
+        self.assertEqual([item.score for item in results], [1.5, 1.5, 0.0])
+        self.assertEqual([item.flow for item in results], [first, second, base])
+
+    @unittest.skipUnless(HAS_SKLEARN, "scikit-learn is not installed in this Python")
+    def test_ml_alerts_are_sorted_by_score(self) -> None:
+        for method in ("isolation-forest", "local-outlier-factor"):
+            with self.subTest(method=method):
+                results = detect_suspicious_flows(
+                    self.flows, self.stats, method=method, contamination=0.5
+                )
+
+                self.assertGreaterEqual(len(results), 2)
+                for higher, lower in zip(results, results[1:]):
+                    self.assertGreaterEqual(higher.score, lower.score)
 
 
 class DetectorValidationTests(unittest.TestCase):
@@ -81,7 +123,7 @@ class DetectorValidationTests(unittest.TestCase):
     def test_zero_threshold_includes_all_flows(self) -> None:
         results = detect_suspicious_flows(self.flows, self.stats, threshold=0.0)
 
-        self.assertEqual([item.flow for item in results], self.flows)
+        self.assertCountEqual([item.flow for item in results], self.flows)
 
     @unittest.skipUnless(HAS_SKLEARN, "scikit-learn is not installed in this Python")
     def test_accepts_valid_contamination_boundaries(self) -> None:

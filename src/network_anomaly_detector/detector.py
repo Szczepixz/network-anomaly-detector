@@ -270,15 +270,14 @@ def detect_suspicious_flows(
             stats,
             contamination=contamination,
         )
-        return [scored_flow for scored_flow in scored_flows if scored_flow.is_suspicious]
-
-    if method == "local-outlier-factor":
+    elif method == "local-outlier-factor":
         scored_flows = score_flows_local_outlier_factor(
             flows,
             stats,
             contamination=contamination,
         )
-        return [scored_flow for scored_flow in scored_flows if scored_flow.is_suspicious]
+    else:
+        scored_flows = score_flows(flows, stats, threshold=threshold)
 
-    scored_flows = score_flows(flows, stats, threshold=threshold)
-    return [scored_flow for scored_flow in scored_flows if scored_flow.is_suspicious]
+    suspicious_flows = [flow for flow in scored_flows if flow.is_suspicious]
+    return sorted(suspicious_flows, key=lambda flow: flow.score, reverse=True)
